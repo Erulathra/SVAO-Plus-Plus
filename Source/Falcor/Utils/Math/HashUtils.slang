@@ -72,3 +72,21 @@ uint2 blockCipherTEA(uint v0, uint v1, uint iterations = 16)
     }
     return uint2(v0, v1);
 }
+
+// hash function from "improved alpha testing using hashed sampling"
+float hash(float2 v)
+{
+    return frac(1.0e4 * sin(17.0 * v.x + 0.1 * v.y) * (0.1 + abs(sin(13.0 * v.y + v.x))));
+}
+
+// 3d hash function from "improved alpha testing using hashed sampling"
+float hash3d(float3 v)
+{
+    return hash(float2(hash(v.xy), v.z));
+}
+
+// 4d hash function based on the 3d hash function
+float hash4d(float4 v)
+{
+    return hash(float2(hash3d(v.xyz), v.w));
+}

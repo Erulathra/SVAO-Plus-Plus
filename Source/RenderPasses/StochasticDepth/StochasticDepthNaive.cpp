@@ -113,6 +113,7 @@ void StochasticDepthNaive::execute(RenderContext* pRenderContext, const RenderDa
             mStochasticDepthPass.pState->setProgram(mStochasticDepthPass.pProgram);
         }
 
+
         // create vars
         if (!mStochasticDepthPass.pVars)
         {

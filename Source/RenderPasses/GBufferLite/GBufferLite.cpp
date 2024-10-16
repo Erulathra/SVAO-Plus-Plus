@@ -178,7 +178,6 @@ void GBufferLite::setScene(RenderContext* pRenderContext, const ref<Scene>& pSce
 
 void GBufferLite::parseProperties(const Properties& props)
 {
-    
 }
 
 void GBufferLite::recreatePrograms()

@@ -31,17 +31,17 @@
 
 using namespace Falcor;
 
-class StochasticDepthNaive : public RenderPass
+class StochasticDepthStratfield : public RenderPass
 {
 public:
-    FALCOR_PLUGIN_CLASS(StochasticDepthNaive, "StochasticDepthNaive", "Insert pass description here.");
+    FALCOR_PLUGIN_CLASS(StochasticDepthStratfield, "StochasticDepthStratfield", "Stratfield sampling Stochastic Depth");
 
-    static ref<StochasticDepthNaive> create(ref<Device> pDevice, const Properties& props)
+    static ref<StochasticDepthStratfield> create(ref<Device> pDevice, const Properties& props)
     {
-        return make_ref<StochasticDepthNaive>(pDevice, props);
+        return make_ref<StochasticDepthStratfield>(pDevice, props);
     }
 
-    StochasticDepthNaive(ref<Device> pDevice, const Properties& props);
+    StochasticDepthStratfield(ref<Device> pDevice, const Properties& props);
 
     virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -54,6 +54,7 @@ public:
 
 private:
     void recreatePrograms();
+    void parseProperties(const Properties& props);
 
 private:
     /** Current scene **/
@@ -69,4 +70,10 @@ private:
         ref<ProgramVars> pVars;
         ref<Sampler> pSampler;
     } mStochasticDepthPass;
+
+    struct
+    {
+        float alpha;
+        int32_t numSamples;
+    } mCurrentState;
 };

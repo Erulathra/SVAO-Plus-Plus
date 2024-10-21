@@ -45,7 +45,7 @@ public:
 
     virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
@@ -56,12 +56,20 @@ private:
     void recreatePrograms();
     void parseProperties(const Properties& props);
 
+    void generateLookUpTable(std::vector<int32_t>& indices, std::vector<int32_t>& lookUp) const;
+
 private:
     /** Current scene **/
     ref<Scene> mpScene;
 
     /** Current fbo **/
     ref<Fbo> mpFbo;
+
+    /** Stratfield look up table */
+    ref<Buffer> mpStratifiedLookUpBuffer;
+
+    /** Stratfield indicies */
+    ref<Buffer> mpStratifiedIndices;
 
     struct
     {
@@ -74,6 +82,6 @@ private:
     struct
     {
         float alpha;
-        int32_t numSamples;
+        int32_t numSamples = 8;
     } mCurrentState;
 };

@@ -56,6 +56,7 @@ StochasticDepthStratfield::StochasticDepthStratfield(ref<Device> pDevice, const 
 
     mpFbo = Fbo::create(pDevice);
 
+
     parseProperties(props);
 }
 
@@ -76,11 +77,22 @@ RenderPassReflection StochasticDepthStratfield::reflect(const CompileData& compi
     reflector.addInput(kDepthTextureName, "Depth Texture");
 
     reflector.addOutput(kStochasticDepthName, "Stochastic Depth")
-             .format(ResourceFormat::D32Float)
-             .bindFlags(ResourceBindFlags::DepthStencil)
-             .texture2D();
+        .format(ResourceFormat::D32Float)
+        .bindFlags(ResourceBindFlags::AllDepthViews)
+        .texture2D(0, 0, mCurrentState.numSamples);
 
     return reflector;
+}
+void StochasticDepthStratfield::compile(RenderContext* pRenderContext, const CompileData& compileData)
+{
+    static std::array<Fbo::SamplePosition, 16> samplePos = {};
+    mpFbo->setSamplePositions(mCurrentState.numSamples, 1, samplePos.data());
+
+    std::vector<int32_t> indices, lookUp;
+    generateLookUpTable(indices, lookUp);
+
+    mpStratifiedIndices = mpDevice->createStructuredBuffer(sizeof(int32_t), indices.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, indices.data(), false);
+    mpStratifiedLookUpBuffer = mpDevice->createStructuredBuffer(sizeof(int32_t), lookUp.size(), ResourceBindFlags::ShaderResource, MemoryType::DeviceLocal, lookUp.data(), false);
 }
 
 void StochasticDepthStratfield::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -137,6 +149,9 @@ void StochasticDepthStratfield::execute(RenderContext* pRenderContext, const Ren
         var["gSampler"] = mStochasticDepthPass.pSampler;
         var["gInvResolution"] = 1.f / float2(pInDepthTexture->getWidth(), pInDepthTexture->getHeight());
 
+        var["gStratifiedIndices"] = mpStratifiedIndices;
+        var["gStratifiedLookUp"] = mpStratifiedLookUpBuffer;
+
         mpFbo->attachDepthStencilTarget(pStochasticDepth);
         mStochasticDepthPass.pState->setFbo(mpFbo);
 
@@ -146,8 +161,16 @@ void StochasticDepthStratfield::execute(RenderContext* pRenderContext, const Ren
 
 void StochasticDepthStratfield::renderUI(Gui::Widgets& widget)
 {
-    widget.slider("Alpha", mCurrentState.alpha, 0.1f, 1.f);
-    widget.slider("Num Samples", mCurrentState.numSamples, 4, 32);
+    if (widget.var("Alpha", mCurrentState.alpha, 0.1f, 1.f))
+    {
+        recreatePrograms();
+    }
+
+    if (widget.var("Num Samples", mCurrentState.numSamples, 4, 32))
+    {
+        recreatePrograms();
+        requestRecompile();
+    }
 }
 
 void StochasticDepthStratfield::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
@@ -160,6 +183,9 @@ void StochasticDepthStratfield::recreatePrograms()
 {
     mStochasticDepthPass.pProgram = nullptr;
     mStochasticDepthPass.pVars = nullptr;
+
+    mpStratifiedIndices = nullptr;
+    mpStratifiedLookUpBuffer = nullptr;
 }
 void StochasticDepthStratfield::parseProperties(const Properties& props)
 {
@@ -173,6 +199,50 @@ void StochasticDepthStratfield::parseProperties(const Properties& props)
         {
             mCurrentState.numSamples = value;
         }
+    }
+}
+
+// from https://www.geeksforgeeks.org/binomial-coefficient-dp-9/
+static int32_t Binomial(int32_t n, int32_t k)
+{
+    std::vector<int32_t> C(k + 1);
+    C[0] = 1;
+
+    for (int32_t i = 1; i <= n; i++)
+    {
+        for (int32_t j = std::min(i, k); j > 0; j--)
+            C[j] = C[j] + C[j - 1];
+    }
+    return C[k];
+}
+
+static uint8_t count_bits(uint32_t v)
+{
+    uint8_t bits = 0;
+    for (; v; ++bits) { v &= v - 1; }
+    return bits;
+}
+
+void StochasticDepthStratfield::generateLookUpTable(std::vector<int32_t>& indices, std::vector<int32_t>& lookUp) const
+{
+    uint32_t maxEntries = uint32_t(std::pow(2, mCurrentState.numSamples));
+    indices.resize(mCurrentState.numSamples + 1);
+    lookUp.resize(maxEntries);
+
+    // Generate index list
+    indices[0] = 0;
+    for (int32_t i = 1; i <= mCurrentState.numSamples; i++) {
+        indices[i] = Binomial(mCurrentState.numSamples, i - 1) + indices[i - 1];
+    }
+
+    // Generate lookup table
+    std::vector<int32_t> currentIndices(indices);
+    lookUp[0] = 0;
+    for (uint32_t i = 1; i < maxEntries; i++) {
+        int32_t popCount = count_bits(i);
+        int32_t index = currentIndices[popCount];
+        lookUp[index] = static_cast<int32_t>(i);
+        currentIndices[popCount]++;
     }
 }
 

@@ -8,15 +8,15 @@ def render_graph_g():
     g.create_pass('GBufferRaster0', 'GBufferRaster', {'outputSize': 'Default', 'samplePattern': 'Center', 'sampleCount': 16, 'useAlphaTest': True, 'adjustShadingNormals': True, 'forceCullMode': False, 'cull': 'Back'})
     g.create_pass('StochasticDepthNaive', 'StochasticDepthNaive', {})
     g.create_pass('LinearizeDepth', 'LinearizeDepth', {})
-    g.create_pass('StochasticDepthStratfield', 'StochasticDepthStratfield', {'alpha': -431602080.0, 'numSamples': -842150451})
+    g.create_pass('StochasticDepthStratfield', 'StochasticDepthStratfield', {'alpha': 0.2029999941587448, 'numSamples': 8})
     g.add_edge('GBufferRaster0.depth', 'StochasticDepthNaive.depthTexture')
     g.add_edge('StochasticDepthNaive.stochasticDepth', 'LinearizeDepth.depthIn')
     g.add_edge('GBufferRaster0', 'StochasticDepthNaive')
     g.add_edge('LinearizeDepth.linearDepthOut', 'SideBySidePass.leftInput')
-    g.add_edge('StochasticDepthStratfield.stochasticDepth', 'LinearizeDepth0.depthIn')
     g.add_edge('GBufferRaster0', 'StochasticDepthStratfield')
     g.add_edge('GBufferRaster0.depth', 'StochasticDepthStratfield.depthTexture')
     g.add_edge('LinearizeDepth0.linearDepthOut', 'SideBySidePass.rightInput')
+    g.add_edge('StochasticDepthStratfield.stochasticDepth', 'LinearizeDepth0.depthIn')
     g.mark_output('SideBySidePass.output')
     return g
 

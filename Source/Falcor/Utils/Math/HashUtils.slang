@@ -90,3 +90,27 @@ float hash4d(float4 v)
 {
     return hash(float2(hash3d(v.xyz), v.w));
 }
+
+// Random Normal distribution
+float hashNormalDistribution(float randomNumber)
+{
+    float theta = 2. * 3.14155926 * randomNumber;
+    float rho = sqrt(-2. * log(hash(randomNumber)));
+    return rho * cos(theta);
+}
+
+// Random Direction
+float3 randomDirection(float randomNumber)
+{
+    float x = hashNormalDistribution(randomNumber);
+    float y = hashNormalDistribution(x);
+    float z = hashNormalDistribution(y);
+
+    return float3(x, y, z);
+}
+
+float3 randomDirectionInHemisphere(float3 normal, float randomNumber)
+{
+    float3 dir = randomDirection(randomNumber);
+    return dir * sign(dot(normal, dir));
+}

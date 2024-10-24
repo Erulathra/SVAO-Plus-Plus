@@ -31,17 +31,22 @@
 
 using namespace Falcor;
 
-class StochasticDepthStratfield : public RenderPass
+namespace Falcor
+{
+    class FullScreenPass;
+}
+
+class SSAO : public RenderPass
 {
 public:
-    FALCOR_PLUGIN_CLASS(StochasticDepthStratfield, "StochasticDepthStratfield", "Stratfield sampling Stochastic Depth");
+    FALCOR_PLUGIN_CLASS(SSAO, "SSAO", "SSAO implementation");
 
-    static ref<StochasticDepthStratfield> create(ref<Device> pDevice, const Properties& props)
+    static ref<SSAO> create(ref<Device> pDevice, const Properties& props)
     {
-        return make_ref<StochasticDepthStratfield>(pDevice, props);
+        return make_ref<SSAO>(pDevice, props);
     }
 
-    StochasticDepthStratfield(ref<Device> pDevice, const Properties& props);
+    SSAO(ref<Device> pDevice, const Properties& props);
 
     virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
@@ -52,6 +57,7 @@ public:
     virtual bool onMouseEvent(const MouseEvent& mouseEvent) override { return false; }
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
+
 private:
     /** Current scene **/
     ref<Scene> mpScene;
@@ -59,29 +65,20 @@ private:
     /** Current fbo **/
     ref<Fbo> mpFbo;
 
-    /** Stratfield look up table */
-    ref<Buffer> mpStratifiedLookUpBuffer;
+    /** ssao pass **/
+    ref<FullScreenPass> mpSSAOPass;
 
-    /** Stratfield indicies */
-    ref<Buffer> mpStratifiedIndices;
-
-    struct
-    {
-        ref<GraphicsState> pState;
-        ref<Program> pProgram;
-        ref<ProgramVars> pVars;
-        ref<Sampler> pSampler;
-    } mStochasticDepthPass;
+    /** point sampler **/
+    ref<Sampler> pPointSampler;
 
     struct
     {
-        float alpha;
-        int32_t numSamples = 8;
+        int32_t numStochasticDepthSamples = 8;
+        int32_t numSSAOSamples = 16;
+        float bias = 0.01f;
+        float radius = 0.1f;
     } mCurrentState;
 
 private:
-    void recreatePrograms();
     void parseProperties(const Properties& props);
-
-    void generateLookUpTable(std::vector<int32_t>& indices, std::vector<int32_t>& lookUp) const;
 };

@@ -71,12 +71,15 @@ private:
     /** point sampler **/
     ref<Sampler> pPointSampler;
 
+    /** number of frames **/
+    int32_t frameNum{};
+
     struct
     {
         int32_t numStochasticDepthSamples = 8;
         int32_t numSSAOSamples = 16;
         float bias = 0.01f;
-        float radius = 0.1f;
+        float radius = 0.001f;
     } mCurrentState;
 
 private:

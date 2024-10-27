@@ -49,7 +49,8 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 }
 
 SSAO::SSAO(ref<Device> pDevice, const Properties& props)
-: RenderPass(pDevice)
+    : RenderPass(pDevice)
+    , frameNum(0)
 {
     Sampler::Desc SamplerDesc;
     SamplerDesc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
@@ -118,9 +119,10 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     {
         ShaderVar var = mpSSAOPass->getRootVar();
 
-        var["gInvProjMat"] = inverse(mpScene->getCamera()->getViewProjMatrixNoJitter());
+        var["gInvProjMat"] = inverse(mpScene->getCamera()->getProjMatrix());
         var["gProjMat"] = mpScene->getCamera()->getProjMatrix();
-        var["gViewMat"] = mpScene->getCamera()->getViewMatrix();
+        var["gViewMat"] = float4x4(transpose(inverse(float3x3(mpScene->getCamera()->getViewMatrix()))));
+        // var["gViewMat"] = mpScene->getCamera()->getViewMatrix();
 
         var["gRadius"] = mCurrentState.radius;
         var["gBias"] = mCurrentState.bias;
@@ -131,15 +133,19 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
 
         var["gPointSampler"] = pPointSampler;
 
+        var["gFrameNum"] = frameNum;
+
         mpFbo->attachColorTarget(pAmbientOcclusionMask, 0);
         mpSSAOPass->execute(pRenderContext, mpFbo);
     }
+
+    ++frameNum;
 }
 
 void SSAO::renderUI(Gui::Widgets& widget)
 {
     widget.var("Bias", mCurrentState.bias, 0.f);
-    widget.var("Radius", mCurrentState.radius, 0.01f);
+    widget.var("Radius", mCurrentState.radius, 0.f);
 }
 
 void SSAO::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)

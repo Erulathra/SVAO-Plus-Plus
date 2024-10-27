@@ -74,7 +74,7 @@ PSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
 
     if (R >= NUM_SAMPLES)
     {
-        output.SampleMask = 0xffff; // This code assumes maximum 32 samples, otherwise further gl_SampleMask values need to be set
+        output.SampleMask = 0xffff;
     }
     else if (R != 0)
     {

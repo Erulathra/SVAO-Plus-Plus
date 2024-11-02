@@ -83,7 +83,7 @@ RenderPassReflection SSAO::reflect(const CompileData& compileData)
     reflector.addInput(kNormalBuffer, "Normal buffer Texture");
 
     reflector.addOutput(kAmbientOcclusionMask, "Ambient Mask")
-        .format(ResourceFormat::R32Float)
+        // .format(ResourceFormat::R32Float)
         .bindFlags(ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget);
 
     return reflector;
@@ -125,7 +125,6 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
         var["gInvProjMat"] = inverse(mpScene->getCamera()->getProjMatrix());
         var["gProjMat"] = mpScene->getCamera()->getProjMatrix();
         var["gViewMat"] = float4x4(transpose(inverse(float3x3(mpScene->getCamera()->getViewMatrix()))));
-        // var["gViewMat"] =mpScene->getCamera()->getViewMatrix();
 
         var["gDepthResolution"] = renderData.getDefaultTextureDims();
 

@@ -78,8 +78,8 @@ private:
     {
         int32_t numStochasticDepthSamples = 8;
         int32_t numSSAOSamples = 16;
-        float bias = 0.01f;
-        float radius = 0.001f;
+        float bias = 0.0f;
+        float radius = 0.2f;
         bool enableSDF = true;
     } mCurrentState;
 

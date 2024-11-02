@@ -109,8 +109,20 @@ float3 randomDirection(float randomNumber)
     return float3(x, y, z);
 }
 
+float3 randomPointInSphere(float radius, float randomNumber)
+{
+    float3 dir = randomDirection(randomNumber);
+    return dir * radius * hash3d(dir);
+}
+
 float3 randomDirectionInHemisphere(float3 normal, float randomNumber)
 {
     float3 dir = randomDirection(randomNumber);
     return dir * sign(dot(normal, dir));
+}
+
+float3 randomPointInHemisphere(float3 normal, float radius, float randomNumber)
+{
+    float3 dir = randomDirectionInHemisphere(normal, randomNumber);
+    return dir * radius * hash3d(dir);
 }

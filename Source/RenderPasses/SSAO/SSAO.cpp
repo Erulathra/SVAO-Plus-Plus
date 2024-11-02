@@ -39,6 +39,7 @@ namespace
 
     const std::string kBias = "bias";
     const std::string kRadius = "radius";
+    const std::string kEnableSDF = "enableSDF";
 
     const std::string kSSAOShaderPath = "RenderPasses/SSAO/SSAO.slang";
 }
@@ -66,6 +67,7 @@ Properties SSAO::getProperties() const
     Properties props;
     props[kBias] = mCurrentState.bias;
     props[kRadius] = mCurrentState.radius;
+    props[kEnableSDF] = mCurrentState.enableSDF;
 
     return props;
 }
@@ -94,6 +96,7 @@ void SSAO::compile(RenderContext* pRenderContext, const CompileData& compileData
     mpSSAOPass->addDefine("USE_STOCHASTIC_DEPTH", "0");
     mpSSAOPass->addDefine("STOCHASTIC_DEPTH_SAMPLES", std::to_string(mCurrentState.numSSAOSamples));
     mpSSAOPass->addDefine("SSAO_SAMPLES", std::to_string(mCurrentState.numSSAOSamples));
+    mpSSAOPass->addDefine("ENABLE_SDF", mCurrentState.enableSDF ? "1" : "0");
 }
 
 void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -122,7 +125,9 @@ void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
         var["gInvProjMat"] = inverse(mpScene->getCamera()->getProjMatrix());
         var["gProjMat"] = mpScene->getCamera()->getProjMatrix();
         var["gViewMat"] = float4x4(transpose(inverse(float3x3(mpScene->getCamera()->getViewMatrix()))));
-        // var["gViewMat"] = mpScene->getCamera()->getViewMatrix();
+        // var["gViewMat"] =mpScene->getCamera()->getViewMatrix();
+
+        var["gDepthResolution"] = renderData.getDefaultTextureDims();
 
         var["gRadius"] = mCurrentState.radius;
         var["gBias"] = mCurrentState.bias;
@@ -146,6 +151,10 @@ void SSAO::renderUI(Gui::Widgets& widget)
 {
     widget.var("Bias", mCurrentState.bias, 0.f);
     widget.var("Radius", mCurrentState.radius, 0.f);
+    if (widget.checkbox("Enable SDF", mCurrentState.enableSDF))
+    {
+        requestRecompile();
+    }
 }
 
 void SSAO::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
@@ -166,6 +175,10 @@ void SSAO::parseProperties(const Properties& props)
         else if (key == kRadius)
         {
             mCurrentState.radius = value;
+        }
+        else if (key == kEnableSDF)
+        {
+            mCurrentState.enableSDF = value;
         }
     }
 }

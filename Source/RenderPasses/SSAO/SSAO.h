@@ -80,6 +80,7 @@ private:
         int32_t numSSAOSamples = 16;
         float bias = 0.01f;
         float radius = 0.001f;
+        bool enableSDF = true;
     } mCurrentState;
 
 private:

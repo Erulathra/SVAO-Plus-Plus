@@ -8,16 +8,24 @@ uniform float4x4 gInvProjMat;
 uniform float4x4 gProjMat;
 uniform float4x4 gViewMat;
 
+uniform uint2 gDepthResolution;
+
 uniform float gRadius;
 uniform float gBias;
 
 uniform int gFrameNum;
 
+
 #ifndef SSAO_SAMPLES
 #define SSAO_SAMPLES 8
 #endif // SSAO_SAMPLES
 
+#ifndef ENABLE_SDF
+#define ENABLE_SDF 0
+#endif // SSAO_SAMPLES
+
 import Utils.Math.HashUtils;
+import Scene.Camera.Camera;
 
 float3 reconstructPosition(float2 uv, float depth)
 {
@@ -29,33 +37,65 @@ float3 reconstructPosition(float2 uv, float depth)
     return position.xyz;
 }
 
+float2 viewSpaceToScreenUV(float3 position)
+{
+    float4 positionProj = mul(float4(position, 1.f), gProjMat);
+    positionProj /= positionProj.w;
+
+    float2 uv = positionProj.xy * 0.5f + 0.5f;
+    uv.y *= -1.f;
+
+    return uv;
+}
+
+float isValidSample(float3 viewPosition, float3 viewNormal, float3 sampleViewPosition, float3 bufferViewPosition)
+{
+    float3 sampleDir = sampleViewPosition - viewPosition;
+
+    float inHemisphereDir = step(0, dot(viewNormal, normalize(sampleDir)));
+    float inHemisphereDist = step(distance(viewPosition, bufferViewPosition), gRadius + gBias);
+
+    // return inHemisphereDist;
+    // return inHemisphereDist * inHemisphereDir;
+    return 1.f;
+}
+
+float computeOcclusion(float3 viewPosition, float3 viewNormal, float3 sampleViewPosition, float3 bufferViewPosition)
+{
+    float bIsOccluded = step(sampleViewPosition.z, bufferViewPosition.z);
+
+    return bIsOccluded * isValidSample(viewPosition, viewNormal, sampleViewPosition, bufferViewPosition);
+}
+
 float main(float2 uv: TEXCOORD) : SV_TARGET0
 {
-    float3 normalWorld = gNormalBuffer.Sample(gPointSampler, uv).xyz;
-    float3 normalView = mul(float3x3(gViewMat), normalWorld);
-
     const float rawDepth = gDepth.Sample(gPointSampler, uv);
     const float3 positionView = reconstructPosition(uv, rawDepth);
+
+    float3 normalWorld = gNormalBuffer.Sample(gPointSampler, uv).xyz;
+    float3 normalView = mul(float3x3(gViewMat), normalWorld);
 
     float occlusion = 0.f;
     for (int i = 0; i < SSAO_SAMPLES; ++i)
     {
         const float randomNumber = hash3d(float3(uv * gFrameNum, i));
-        const float3 randomDir = randomDirectionInHemisphere(normalView, randomNumber);
-        // const float3 randomDir = randomDirection(randomNumber);
+        const float3 randomDir = randomPointInHemisphere(normalView, gRadius, randomNumber);
+        // const float3 randomDir = randomPointInSphere(randomNumber, gRadius);
 
-        const float3 samplePosition = positionView + randomDir * gRadius;
-        float4 samplePositionProj = mul(float4(samplePosition, 1.f), gProjMat);
-        samplePositionProj /= samplePositionProj.w;
+        const float3 samplePositionView = positionView + randomDir;
+        const float2 sampleUV = viewSpaceToScreenUV(samplePositionView);
 
-        float2 sampleUV = samplePositionProj.xy * 0.5f + 0.5f;
-        sampleUV.y *= -1.f;
-        float sampleRawDepth = gDepth.Sample(gPointSampler, sampleUV);
+        const float bufferSampleDepth = gDepth.Sample(gPointSampler, sampleUV);
+        const float3 bufferViewPosition = reconstructPosition(sampleUV, bufferSampleDepth);
 
-        // occlusion += step(samplePositionProj.z + gBias, sampleRawDepth);
-        occlusion += step(samplePositionProj.z, sampleRawDepth);
+        occlusion += computeOcclusion(positionView, normalView, samplePositionView, bufferViewPosition);
     }
 
-    return occlusion / SSAO_SAMPLES + gBias;
+// #if ENABLE_SDF
+//     return rawDepth;
+// #else
+//     return -positionView.z;
+// #endif
+    return 1.f - (occlusion / SSAO_SAMPLES);
 }
 

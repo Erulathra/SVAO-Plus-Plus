@@ -149,6 +149,9 @@ void StochasticDepthStratfield::execute(RenderContext* pRenderContext, const Ren
         var["gSampler"] = mStochasticDepthPass.pSampler;
         var["gInvResolution"] = 1.f / float2(pInDepthTexture->getWidth(), pInDepthTexture->getHeight());
 
+        var["gNear"] = mpScene->getCamera()->getNearPlane();
+        var["gFar"] = mpScene->getCamera()->getFarPlane();
+
         var["gStratifiedIndices"] = mpStratifiedIndices;
         var["gStratifiedLookUp"] = mpStratifiedLookUpBuffer;
 

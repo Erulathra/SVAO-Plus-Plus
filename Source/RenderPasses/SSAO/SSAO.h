@@ -81,6 +81,7 @@ private:
         float bias = 0.0f;
         float radius = 0.2f;
         bool enableSDF = true;
+        bool showProblematicSamples = false;
     } mCurrentState;
 
 private:

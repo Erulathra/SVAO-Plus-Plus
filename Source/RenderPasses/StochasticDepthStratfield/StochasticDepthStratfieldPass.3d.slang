@@ -28,8 +28,6 @@
 import Scene.Raster;
 import Utils.Math.HashUtils;
 
-#define EPSILON 1e-3
-
 #ifndef ALPHA
 #define ALPHA 0.2
 #endif // ALPHA
@@ -46,6 +44,9 @@ uniform float2 gInvResolution;
 StructuredBuffer<uint> gStratifiedIndices;
 StructuredBuffer<uint> gStratifiedLookUp;
 
+uniform float gNear;
+uniform float gFar;
+
 VSOut vsMain(VSIn vIn)
 {
     return defaultVS(vIn);
@@ -56,6 +57,11 @@ struct PSOut
     uint SampleMask : SV_Coverage;
 };
 
+float linearizeDepth(float depth)
+{
+    return gNear * gFar / (gFar + depth * (gNear - gFar));
+}
+
 PSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
 {
     PSOut output;
@@ -64,8 +70,8 @@ PSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID) : SV_TARGET
     float2 screenSpaceUV = vsOut.posH.xy * gInvResolution;
 
     // discard fragments with the first pass depth
-    float firstDepth = gDepthTexture.SampleLevel(gSampler, screenSpaceUV, 0);
-    if ((vsOut.posH.z - EPSILON) <= firstDepth)
+    float firstDepth = gDepthTexture.Sample(gSampler, screenSpaceUV);
+    if (linearizeDepth(vsOut.posH.z) - 1e-3 <= linearizeDepth(firstDepth))
         discard;
 
     float randomFloat = hash3d(vsOut.posW.xyz);

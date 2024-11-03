@@ -15,14 +15,21 @@ uniform float gBias;
 
 uniform int gFrameNum;
 
-
 #ifndef SSAO_SAMPLES
 #define SSAO_SAMPLES 8
 #endif // SSAO_SAMPLES
 
 #ifndef ENABLE_SDF
 #define ENABLE_SDF 0
-#endif // SSAO_SAMPLES
+#endif // ENABLE_SDF
+
+#ifndef MSAA_SAMPLES
+#define MSAA_SAMPLES 4
+#endif // MSAA_SAMPLES
+
+#ifndef SHOW_PROBLEMATIC_SAMPLES
+#define SHOW_PROBLEMATIC_SAMPLES 0
+#endif // SHOW_PROBLEMATIC_SAMPLES
 
 import Utils.Math.HashUtils;
 
@@ -60,8 +67,7 @@ float isValidSample(float3 viewPosition, float3 viewNormal, float3 sampleViewPos
 float computeOcclusion(float3 viewPosition, float3 viewNormal, float3 sampleViewPosition, float3 bufferViewPosition)
 {
     float bIsOccluded = step(sampleViewPosition.z + gBias, bufferViewPosition.z);
-
-    return bIsOccluded * isValidSample(viewPosition, viewNormal, sampleViewPosition, bufferViewPosition);
+    return bIsOccluded;
 }
 
 float main(float2 uv: TEXCOORD) : SV_TARGET0
@@ -72,6 +78,7 @@ float main(float2 uv: TEXCOORD) : SV_TARGET0
 
     float3 normalWorld = gNormalBuffer.Sample(gPointSampler, uv).xyz;
     float3 normalView = normalize(mul(float3x3(gViewMat), normalWorld));
+
 
     float occlusion = 0.f;
     for (int i = 0; i < SSAO_SAMPLES; ++i)
@@ -85,9 +92,48 @@ float main(float2 uv: TEXCOORD) : SV_TARGET0
         const float bufferSampleDepth = gDepth.Sample(gPointSampler, sampleUV);
         const float3 bufferViewPosition = UVToViewSpace(sampleUV, bufferSampleDepth);
 
-        occlusion += computeOcclusion(positionView, normalView, samplePositionView, bufferViewPosition);
+#if ENABLE_SDF
+        float sampleOcclusion = 0.f;
+#else
+        float sampleOcclusion = computeOcclusion(positionView, normalView, samplePositionView, bufferViewPosition);;
+#endif
+
+        sampleOcclusion *= isValidSample(positionView, normalView, samplePositionView, bufferViewPosition);
+#if ENABLE_SDF
+        if (isValidSample(positionView, normalView, samplePositionView, bufferViewPosition) < 0.5)
+        {
+            // for (int subSample = 0; subSample < MSAA_SAMPLES; ++subSample)
+            for (int subSample = 0; subSample < 1; ++subSample)
+            {
+                // const int2 subSamplePixelCoord = int2(mul(sampleUV, gDepthResolution));
+                const int2 subSamplePixelCoord = int2(floor(sampleUV * gDepthResolution));
+                const float subSampleDepth = gStochasticDepth.Load(int3(subSamplePixelCoord, 0), subSample);
+                const float3 subSamplePositionView = UVToViewSpace(sampleUV, subSampleDepth);
+
+                if (isValidSample(positionView, normalView, samplePositionView, subSamplePositionView) > 0.5)
+                {
+                    sampleOcclusion = computeOcclusion(positionView, normalView, samplePositionView, subSamplePositionView);
+                }
+            }
+        }
+        else
+        {
+            sampleOcclusion = computeOcclusion(positionView, normalView, samplePositionView, bufferViewPosition);;
+        }
+#endif // ENABLE_SDF
+
+#if !SHOW_PROBLEMATIC_SAMPLES
+        occlusion += sampleOcclusion;
+#else
+        occlusion += isValidSample(positionView, normalView, samplePositionView, bufferViewPosition);
+#endif
+
     }
 
-    return 1.f - (occlusion / SSAO_SAMPLES);
+#if !SHOW_PROBLEMATIC_SAMPLES
+    return saturate(1.f - (occlusion / SSAO_SAMPLES) * 2.f);
+#else
+    return saturate(1.f - occlusion / SSAO_SAMPLES);
+#endif
 }
 

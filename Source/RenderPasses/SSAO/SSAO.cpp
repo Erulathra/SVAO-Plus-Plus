@@ -40,6 +40,7 @@ namespace
     const std::string kBias = "bias";
     const std::string kRadius = "radius";
     const std::string kEnableSDF = "enableSDF";
+    const std::string kShowProblematicSamples = "showProblematicSamples";
 
     const std::string kSSAOShaderPath = "RenderPasses/SSAO/SSAO.slang";
 }
@@ -68,6 +69,7 @@ Properties SSAO::getProperties() const
     props[kBias] = mCurrentState.bias;
     props[kRadius] = mCurrentState.radius;
     props[kEnableSDF] = mCurrentState.enableSDF;
+    props[kShowProblematicSamples] = mCurrentState.showProblematicSamples;
 
     return props;
 }
@@ -83,7 +85,7 @@ RenderPassReflection SSAO::reflect(const CompileData& compileData)
     reflector.addInput(kNormalBuffer, "Normal buffer Texture");
 
     reflector.addOutput(kAmbientOcclusionMask, "Ambient Mask")
-        // .format(ResourceFormat::R32Float)
+        .format(ResourceFormat::R32Float)
         .bindFlags(ResourceBindFlags::ShaderResource | ResourceBindFlags::RenderTarget);
 
     return reflector;
@@ -97,6 +99,7 @@ void SSAO::compile(RenderContext* pRenderContext, const CompileData& compileData
     mpSSAOPass->addDefine("STOCHASTIC_DEPTH_SAMPLES", std::to_string(mCurrentState.numSSAOSamples));
     mpSSAOPass->addDefine("SSAO_SAMPLES", std::to_string(mCurrentState.numSSAOSamples));
     mpSSAOPass->addDefine("ENABLE_SDF", mCurrentState.enableSDF ? "1" : "0");
+    mpSSAOPass->addDefine("SHOW_PROBLEMATIC_SAMPLES", mCurrentState.showProblematicSamples ? "1" : "0");
 }
 
 void SSAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -154,6 +157,10 @@ void SSAO::renderUI(Gui::Widgets& widget)
     {
         requestRecompile();
     }
+    if (widget.checkbox("Show problematic samples", mCurrentState.showProblematicSamples))
+    {
+        requestRecompile();
+    }
 }
 
 void SSAO::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
@@ -178,6 +185,10 @@ void SSAO::parseProperties(const Properties& props)
         else if (key == kEnableSDF)
         {
             mCurrentState.enableSDF = value;
+        }
+        else if (key == kShowProblematicSamples)
+        {
+            mCurrentState.showProblematicSamples = value;
         }
     }
 }

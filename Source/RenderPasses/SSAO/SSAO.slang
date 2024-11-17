@@ -56,7 +56,7 @@ float2 viewSpaceToUV(float3 position)
 
 float isValidSample(float3 viewPosition, float3 viewNormal, float3 sampleViewPosition, float3 bufferViewPosition)
 {
-    float3 sampleDir = sampleViewPosition - viewPosition;
+    float3 sampleDir = bufferViewPosition - viewPosition;
 
     float inHemisphereDir = step(0, dot(viewNormal, normalize(sampleDir)));
     float inHemisphereDist = step(distance(viewPosition, bufferViewPosition), gRadius);

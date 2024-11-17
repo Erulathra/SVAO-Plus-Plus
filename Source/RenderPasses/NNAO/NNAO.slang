@@ -107,6 +107,16 @@ float2 viewSpaceToUV(float3 position)
     return uv;
 }
 
+float isValidSample(float3 viewPosition, float3 viewNormal, float3 sampleViewPosition)
+{
+    float3 sampleDir = sampleViewPosition - viewPosition;
+
+    float inHemisphereDir = step(0, dot(viewNormal, normalize(sampleDir)));
+    float inHemisphereDist = step(distance(viewPosition, sampleViewPosition), gRadius);
+
+    return inHemisphereDist * inHemisphereDir;
+}
+
 float3 normalWorldToView(float3 normalWorld)
 {
     return normalize(mul(float3x3(gViewMat), normalWorld));
@@ -146,7 +156,7 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
     /* First Layer */
     float4 H0 = float4(0.f);
 
-    for (int i = 0; i < NNAO_SAMPLES; i++)
+    for (int i = 0; i < NNAO_SAMPLES; ++i)
     {
         float scale = (PI / 4.f) * (FW * FW) * ((float(i + 1) / float(NNAO_SAMPLES + 1)) / float(NNAO_SAMPLES / 2));
         float2 indx = spiralSample(float(i + 1) / float(NNAO_SAMPLES + 1), 2.5f, 2.f * PI * seed);
@@ -157,6 +167,17 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
         float3 actu = UVToViewSpace(next, depth);
         float2 fltr = (indx * float(HW) + float(HW) + 0.5f) / (float(HW) * 2.f + 2.f);
         float3 norm = sampleNormalView(next, actu);
+
+#if ENABLE_SDF
+        if (isValidSample(base, normalView, actu) < 0.5f)
+        {
+            const int2 subSamplePixelCoord = int2(floor(next * gDepthResolution));
+            depth = gStochasticDepth.Load(int3(subSamplePixelCoord, 0), 0);
+            actu = UVToViewSpace(next, depth);
+            fltr = (indx * float(HW) + float(HW) + 0.5f) / (float(HW) * 2.f + 2.f);
+            norm = sampleNormalView(next, actu);
+        }
+#endif //ENABLE_SDF
 
         float4 X = (1.f - clamp(distance(actu, base) / gRadius, 0.f, 1.f)) * float4(norm - normalView, (actu.z - base.z) / gRadius);
 
@@ -172,13 +193,9 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
 
     }
 
-    // return H0.xyz;
-    // return normalView;
-
     H0 = prelu(H0 + b0, alpha0, beta0);
 
     /* Other Layers */
-
     float4 H1 = prelu(mul(H0, W1) + b1, alpha1, beta1);
     float4 H2 = prelu(mul(H1, W2) + b2, alpha2, beta2);
     float Y = preluFloat(dot(W3, H2) + b3, alpha3, beta3);

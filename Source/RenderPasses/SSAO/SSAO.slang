@@ -70,7 +70,7 @@ float computeOcclusion(float3 viewPosition, float3 viewNormal, float3 sampleView
     return bIsOccluded;
 }
 
-float main(float2 uv: TEXCOORD) : SV_TARGET0
+float3 main(float2 uv: TEXCOORD) : SV_TARGET0
 {
     const float rawDepth = gDepth.Sample(gPointSampler, uv);
     const float3 positionView = UVToViewSpace(uv, rawDepth);
@@ -105,7 +105,6 @@ float main(float2 uv: TEXCOORD) : SV_TARGET0
             // for (int subSample = 0; subSample < MSAA_SAMPLES; ++subSample)
             for (int subSample = 0; subSample < 1; ++subSample)
             {
-                // const int2 subSamplePixelCoord = int2(mul(sampleUV, gDepthResolution));
                 const int2 subSamplePixelCoord = int2(floor(sampleUV * gDepthResolution));
                 const float subSampleDepth = gStochasticDepth.Load(int3(subSamplePixelCoord, 0), subSample);
                 const float3 subSamplePositionView = UVToViewSpace(sampleUV, subSampleDepth);

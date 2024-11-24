@@ -77,6 +77,7 @@ private:
     {
         float alpha;
         int32_t numSamples = 8;
+        bool bUseQuarterRes = false;
     } mCurrentState;
 
 private:

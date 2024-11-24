@@ -38,6 +38,7 @@ namespace
 
     const std::string kAlpha = "alpha";
     const std::string kNumSamples = "numSamples";
+    const std::string kUseQuarterRes = "kUseQuarterRes";
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -55,7 +56,6 @@ StochasticDepthStratfield::StochasticDepthStratfield(ref<Device> pDevice, const 
     mStochasticDepthPass.pSampler = pDevice->createSampler(SamplerDesc);
 
     mpFbo = Fbo::create(pDevice);
-
 
     parseProperties(props);
 }
@@ -76,10 +76,13 @@ RenderPassReflection StochasticDepthStratfield::reflect(const CompileData& compi
 
     reflector.addInput(kDepthTextureName, "Depth Texture");
 
+    const uint2 SDFResolution = float2{compileData.defaultTexDims} * 0.25f;
+
     reflector.addOutput(kStochasticDepthName, "Stochastic Depth")
         .format(ResourceFormat::D32Float)
         .bindFlags(ResourceBindFlags::AllDepthViews)
-        .texture2D(0, 0, mCurrentState.numSamples);
+        .texture2D(SDFResolution.x, SDFResolution.y, mCurrentState.numSamples);
+        // .texture2D(0, 0, mCurrentState.numSamples);
 
     return reflector;
 }

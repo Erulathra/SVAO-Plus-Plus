@@ -1,0 +1,113 @@
+import Utils.Math.PackedFormats;
+import Utils.Math.HashUtils;
+
+#include "Jitter.slangh"
+
+Texture2D<float> linearDepthIn;
+SamplerState S; // linear sampler for downsampling depth on half res
+
+Texture2D<uint> rayMinTex; // contains float values: use asfloat()
+Texture2D<uint> rayMaxTex; // contains float values: use asfloat()
+
+#define USE_RAY_INTERVAL 0
+
+#define GUARD_BAND false
+
+#define NORMALIZE false
+
+#define DEFAULT_DEPTH (NORMALIZE ? 1.0 : 3.40282347E+37F)
+
+#ifndef NUM_SAMPLES
+#define NUM_SAMPLES 4
+#endif
+
+#define MAX_COUNT 8
+
+float RayToViewDepth(float3 rayDir, float rayT)
+{
+    float cosTheta = dot(normalize(gScene.camera.data.cameraW), rayDir);
+    return rayT * cosTheta;
+}
+
+float ViewDepthToRay(float3 rayDir, float viewDepth)
+{
+    float cosTheta = dot(normalize(gScene.camera.data.cameraW), rayDir);
+    return viewDepth / cosTheta;
+}
+
+RayDesc initRayDesc(int2 pixel, int2 dim)
+{
+    dim = dim - 2 * GUARD_BAND; // remove guard band
+    int2 signedPixel = pixel - GUARD_BAND; // pixel can be negative or bigger than dim, but thats fine for the ray direction
+    RayDesc ray = gScene.camera.computeRayPinhole(signedPixel, dim).toRayDesc();
+    ray.Direction = normalize(gScene.camera.computeNonNormalizedRayDirPinhole(signedPixel, dim, true));
+
+    float epsilon = 0.1 * gScene.camera.data.nearZ; // small ray offset
+    float depth = 0.0;
+    if(all(signedPixel >= 0) && all(signedPixel < dim)) // use frame buffer depth if pixel is inside frame buffer
+        depth = linearDepthIn.SampleLevel(S, (signedPixel + 0.5) / dim, 0);
+
+    ray.TMin = ViewDepthToRay(ray.Direction, depth) + epsilon; // start after first known hit
+
+#if USE_RAY_INTERVAL
+    uint iRayMin = rayMinTex[pixel];
+    if (iRayMin != 0u) // test if valid values
+        ray.TMin = max(asfloat(iRayMin), ray.TMin);
+
+    uint iRayMax = rayMaxTex[pixel];
+    if (iRayMax != 0u) // test if valid values
+        ray.TMax = min(asfloat(iRayMax), ray.TMax);
+#endif
+
+    return ray;
+}
+
+
+// abstract:
+#ifndef TEXTURE_LOD_T
+// #define TEXTURE_LOD_T ImplicitLodTextureSampler
+#define TEXTURE_LOD_T ExplicitRayConesLodTextureSampler
+#endif
+TEXTURE_LOD_T computeLod(VertexData v, float3 rayDir);
+
+// returns true if the ray sample can be commited
+bool algorithm(inout float depths[NUM_SAMPLES], inout uint count, float2 barycentrics, float t, GeometryInstanceID instanceID, uint primitiveIndex, float3 rayDir)
+{
+    float rng = hash(barycentrics);
+
+    // adjust t to view depth
+    t = RayToViewDepth(rayDir, t); // convert to view depth
+    if (NORMALIZE)
+        t = saturate((t - gScene.camera.data.nearZ) / (gScene.camera.data.farZ - gScene.camera.data.nearZ));
+
+    uint slot = count++; // insertion slot
+    if (count > NUM_SAMPLES)
+        slot = uint(rng * count); // slot in [0, count - 1]
+
+    if (slot >= NUM_SAMPLES) // rejected?
+    {
+        return count >= MAX_COUNT; // commit ray if count exceeded
+    }
+
+    // early depth test (if alpha hash)
+    [unroll]
+    for (uint i = 0; i < NUM_SAMPLES; ++i)
+    {
+        if (i == slot && depths[i] <= t)
+        {
+            return count >= MAX_COUNT; // rejected due to depth test
+        }
+    }
+
+    [unroll]
+    for (uint i = 0; i < NUM_SAMPLES; ++i)
+    {
+        if (i == slot)
+        {
+            depths[i] = t;
+        }
+
+    }
+
+    return count >= MAX_COUNT; // further traverse
+}

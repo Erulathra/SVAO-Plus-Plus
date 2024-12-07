@@ -13,7 +13,7 @@ Texture2D<uint> rayMaxTex; // contains float values: use asfloat()
 
 #define GUARD_BAND false
 
-#define NORMALIZE false
+#define NORMALIZE true
 
 #define DEFAULT_DEPTH (NORMALIZE ? 1.0 : 3.40282347E+37F)
 
@@ -78,11 +78,15 @@ bool algorithm(inout float depths[NUM_SAMPLES], inout uint count, float2 barycen
     // adjust t to view depth
     t = RayToViewDepth(rayDir, t); // convert to view depth
     if (NORMALIZE)
+    {
         t = saturate((t - gScene.camera.data.nearZ) / (gScene.camera.data.farZ - gScene.camera.data.nearZ));
+    }
 
     uint slot = count++; // insertion slot
     if (count > NUM_SAMPLES)
+    {
         slot = uint(rng * count); // slot in [0, count - 1]
+    }
 
     if (slot >= NUM_SAMPLES) // rejected?
     {

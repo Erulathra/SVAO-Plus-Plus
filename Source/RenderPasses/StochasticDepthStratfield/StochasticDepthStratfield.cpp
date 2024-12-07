@@ -76,13 +76,12 @@ RenderPassReflection StochasticDepthStratfield::reflect(const CompileData& compi
 
     reflector.addInput(kDepthTextureName, "Depth Texture");
 
-    const uint2 SDFResolution = float2{compileData.defaultTexDims} * 0.25f;
+    const uint2 SDFResolution = float2{compileData.defaultTexDims};
 
     reflector.addOutput(kStochasticDepthName, "Stochastic Depth")
         .format(ResourceFormat::D32Float)
         .bindFlags(ResourceBindFlags::AllDepthViews)
-        .texture2D(SDFResolution.x, SDFResolution.y, mCurrentState.numSamples);
-        // .texture2D(0, 0, mCurrentState.numSamples);
+        .texture2D(SDFResolution.x, SDFResolution.y);
 
     return reflector;
 }

@@ -33,7 +33,7 @@ import Utils.Math.HashUtils;
 #endif // ALPHA
 
 #ifndef NUM_SAMPLES
-#define NUM_SAMPLES 16
+#define NUM_SAMPLES 4
 #endif // ALPHA
 
 Texture2D<float> gDepthTexture;

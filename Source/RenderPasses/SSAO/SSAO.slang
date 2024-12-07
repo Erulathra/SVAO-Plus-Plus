@@ -1,5 +1,5 @@
 ﻿Texture2D<float> gDepth;
-Texture2DMSArray<float> gStochasticDepth;
+Texture2D<float4> gStochasticDepth;
 Texture2D<float3> gNormalBuffer;
 
 SamplerState gPointSampler;
@@ -76,9 +76,8 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
     const float3 positionView = UVToViewSpace(uv, rawDepth);
     const float2 posToUV = viewSpaceToUV(positionView);
 
-    float3 normalWorld = gNormalBuffer.Sample(gPointSampler, uv).xyz;
-    float3 normalView = normalize(mul(float3x3(gViewMat), normalWorld));
-
+    const float3 normalWorld = gNormalBuffer.Sample(gPointSampler, uv).xyz;
+    const float3 normalView = normalize(mul(float3x3(gViewMat), normalWorld));
 
     float occlusion = 0.f;
     for (int i = 0; i < SSAO_SAMPLES; ++i)
@@ -102,11 +101,9 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
 #if ENABLE_SDF
         if (isValidSample(positionView, normalView, samplePositionView, bufferViewPosition) < 0.5)
         {
-            // for (int subSample = 0; subSample < MSAA_SAMPLES; ++subSample)
-            for (int subSample = 0; subSample < 1; ++subSample)
+            for (int subSample = 0; subSample < 4; ++subSample)
             {
-                const int2 subSamplePixelCoord = int2(floor(sampleUV * gDepthResolution));
-                const float subSampleDepth = gStochasticDepth.Load(int3(subSamplePixelCoord, 0), subSample);
+                const float subSampleDepth = gStochasticDepth.Sample(gPointSampler, sampleUV)[subSample];
                 const float3 subSamplePositionView = UVToViewSpace(sampleUV, subSampleDepth);
 
                 if (isValidSample(positionView, normalView, samplePositionView, subSamplePositionView) > 0.5)
@@ -121,18 +118,10 @@ float3 main(float2 uv: TEXCOORD) : SV_TARGET0
         }
 #endif // ENABLE_SDF
 
-#if !SHOW_PROBLEMATIC_SAMPLES
         occlusion += sampleOcclusion;
-#else
-        occlusion += isValidSample(positionView, normalView, samplePositionView, bufferViewPosition);
-#endif
 
     }
 
-#if !SHOW_PROBLEMATIC_SAMPLES
     return saturate(1.f - (occlusion / SSAO_SAMPLES) * 2.f);
-#else
-    return saturate(1.f - occlusion / SSAO_SAMPLES);
-#endif
 }
 

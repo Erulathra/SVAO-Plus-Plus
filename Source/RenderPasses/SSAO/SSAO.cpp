@@ -80,8 +80,8 @@ RenderPassReflection SSAO::reflect(const CompileData& compileData)
 
     reflector.addInput(kDepth, "Depth Texture");
     reflector.addInput(kStochasticDepth, "Stochastic Depth Texture")
-        .format(ResourceFormat::D32Float)
-        .texture2D(0, 0, mCurrentState.numStochasticDepthSamples);
+        .format(ResourceFormat::RGBA32Float);
+
     reflector.addInput(kNormalBuffer, "Normal buffer Texture");
 
     reflector.addOutput(kAmbientOcclusionMask, "Ambient Mask")

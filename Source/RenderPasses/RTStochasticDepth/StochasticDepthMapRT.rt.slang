@@ -2,7 +2,7 @@ import Scene.Raytracing;
 import Rendering.Materials.TexLODHelpers;
 import Rendering.Materials.TexLODTypes;
 
-RWTexture2D<float4> stochasticDepthOut;
+RWTexture2D<float4> gStochasticDepthOut;
 Texture2D<uint> maskTex;
 
 #ifndef NUM_SAMPLES
@@ -81,5 +81,5 @@ void rayGen()
     {
         data[i] = rayData.depths[i];
     }
-    stochasticDepthOut[svPos] = data;
+    gStochasticDepthOut[svPos] = data;
 }

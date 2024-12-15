@@ -1,9 +1,9 @@
 import Utils.Math.PackedFormats;
 import Utils.Math.HashUtils;
 
-#include "Jitter.slangh"
+// #include "Jitter.slangh"
 
-Texture2D<float> linearDepthIn;
+Texture2D<float> gLinearDepthIn;
 SamplerState S; // linear sampler for downsampling depth on half res
 
 Texture2D<uint> rayMinTex; // contains float values: use asfloat()
@@ -45,7 +45,7 @@ RayDesc initRayDesc(int2 pixel, int2 dim)
     float epsilon = 0.1 * gScene.camera.data.nearZ; // small ray offset
     float depth = 0.0;
     if(all(signedPixel >= 0) && all(signedPixel < dim)) // use frame buffer depth if pixel is inside frame buffer
-        depth = linearDepthIn.SampleLevel(S, (signedPixel + 0.5) / dim, 0);
+        depth = gLinearDepthIn.SampleLevel(S, (signedPixel + 0.5) / dim, 0);
 
     ray.TMin = ViewDepthToRay(ray.Direction, depth) + epsilon; // start after first known hit
 

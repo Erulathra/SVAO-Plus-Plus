@@ -130,8 +130,8 @@ void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData&
     }
 
     ShaderVar pVars = mRtProgram.pVars->getRootVar();
-    pVars["linearDepthIn"] = pLinearDepthIn;
-    pVars["stochasticDepthOut"] = pStochasticDepthOut;
+    pVars["gLinearDepthIn"] = pLinearDepthIn;
+    pVars["gStochasticDepthOut"] = pStochasticDepthOut;
 
     mpScene->raytrace(pRenderContext, mRtProgram.pProgram.get(), mRtProgram.pVars, uint3{pStochasticDepthOut->getWidth(), pStochasticDepthOut->getHeight(), 1});
 }

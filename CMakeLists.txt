@@ -7,8 +7,8 @@ cmake_policy(SET CMP0057 NEW)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake)
 
-project(Falcor_SVAO-Plus-Plus
-    DESCRIPTION "Falcor Realtime Rendering Framework"
+project(SVAO-Plus-Plus
+    DESCRIPTION "SVAO++ an augmented implementation of Stochastic Volumetric Ambient Occlusion"
     LANGUAGES CXX C
 )
 

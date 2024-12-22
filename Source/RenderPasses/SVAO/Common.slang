@@ -436,8 +436,6 @@ struct RayData // cannot be compressed to half floats => no diff in rendering ti
     float tSphereStart;
 };
 
-void traceAORay(RayDesc ray, inout RayData rayData);
-
 float calcAO2(uint2 svPos, uint mask)
 {
     float2 texC = (float2(svPos) + 0.5) * gData.invResolution;
@@ -474,38 +472,35 @@ float calcAO2(uint2 svPos, uint mask)
 
         visibility.x -= s.visibility; // subtract old visibility from raster for bright channel
 
-        if (SECONDARY_DEPTH_MODE == DEPTH_MODE_STOCHASTIC)
-        {
-            //int2 pixelCoord = UVToSDPixel(s.rasterSamplePosUV);
-            int2 pixelCoord = UVToSDPixel(s.samplePosUV);
+        //int2 pixelCoord = UVToSDPixel(s.rasterSamplePosUV);
+        int2 pixelCoord = UVToSDPixel(s.samplePosUV);
 
-            //float2 sdSampleUV = getSnappedUV(s.rasterSamplePosUV, float2(sdwidth, sdheight));
-            // calc uv space position based on primary frame buffer size
+        //float2 sdSampleUV = getSnappedUV(s.rasterSamplePosUV, float2(sdwidth, sdheight));
+        // calc uv space position based on primary frame buffer size
 #if SD_JITTER
-            float2 sdSampleUV = (pixelCoord - gData.sdGuard + randomJitter(pixelCoord)) / gData.lowResolution;
+        float2 sdSampleUV = (pixelCoord - gData.sdGuard + randomJitter(pixelCoord)) / gData.lowResolution;
 #else
-            float2 sdSampleUV = (pixelCoord - gData.sdGuard + 0.5f) / gData.lowResolution;
+        float2 sdSampleUV = (pixelCoord - gData.sdGuard + 0.5f) / gData.lowResolution;
 #endif // else SD_JITTER
-            const float depthRange = gCamera.data.farZ - gCamera.data.nearZ;
-            const float depthOffset = gCamera.data.nearZ;
-            bool stochInside = false;
-            float4 sddepth = gLinearSDIn[pixelCoord];
+        const float depthRange = gCamera.data.farZ - gCamera.data.nearZ;
+        const float depthOffset = gCamera.data.nearZ;
+        bool stochInside = false;
+        float4 sddepth = gLinearSDIn[pixelCoord];
 
-            if (!s.isInScreen)
-            {
-                s.resetSample();
-            }
+        if (!s.isInScreen)
+        {
+            s.resetSample();
+        }
 
-            [unroll]
-            for (uint i = 0; i < MSAA_SAMPLES; ++i)
-            {
-                float linearSampleDepth = sddepth[i];
+        [unroll]
+        for (uint i = 0; i < MSAA_SAMPLES; ++i)
+        {
+            float linearSampleDepth = sddepth[i];
 
-                // linearSampleDepth is in [0, 1] => scale accordingly
-                linearSampleDepth = linearSampleDepth * depthRange + depthOffset;
-                float3 samplePosV = UVToViewSpace(sdSampleUV, linearSampleDepth);
-                s.addSample(data, samplePosV);
-            }
+            // linearSampleDepth is in [0, 1] => scale accordingly
+            linearSampleDepth = linearSampleDepth * depthRange + depthOffset;
+            float3 samplePosV = UVToViewSpace(sdSampleUV, linearSampleDepth);
+            s.addSample(data, samplePosV);
         }
 
         visibility += s.visibility;

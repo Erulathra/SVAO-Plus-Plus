@@ -10,14 +10,8 @@ import Utils.Math.PackedFormats;
 
 // single depth texture
 #define DEPTH_MODE_SINGLE 0
-// two depth textures
-#define DEPTH_MODE_DUAL 1
 // single or dual depth texture + stochastic depth texture
-#define DEPTH_MODE_STOCHASTIC 2
-
-#ifndef PRIMARY_DEPTH_MODE
-#define PRIMARY_DEPTH_MODE DEPTH_MODE_SINGLE
-#endif // PRIMARY_DEPTH_MODE
+#define DEPTH_MODE_STOCHASTIC 1
 
 #ifndef SECONDARY_DEPTH_MODE
 #define SECONDARY_DEPTH_MODE DEPTH_MODE_SINGLE

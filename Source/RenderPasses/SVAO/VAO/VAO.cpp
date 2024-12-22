@@ -84,7 +84,9 @@ RenderPassReflection VAO::reflect(const CompileData& compileData)
                 .bindFlags(ResourceBindFlags::AllColorViews)
                 .format(ResourceFormat::R8Unorm);
 
-    // reflector.addOutput()
+    reflector.addOutput(kAOMaskOut, "AO Mask (optional)")
+                .bindFlags(ResourceBindFlags::AllColorViews)
+                .format(ResourceFormat::R8Uint);
 
     return reflector;
 }
@@ -96,6 +98,7 @@ void VAO::compile(RenderContext* pRenderContext, const CompileData& compileData)
     if (mpScene)
     {
         DefineList defines = GetCommonDefines(compileData);
+        defines.add("SECONDARY_DEPTH_MODE", mSVAOInputMode ? "1" : "0");
 
         ProgramDesc computeShaderDesc;
         mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kSVAOPass, "main", defines);
@@ -114,14 +117,15 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     ref<Texture> pLinearDepthIn = renderData.getTexture(kLinearDepthIn);
     ref<Texture> pNormalIn = renderData.getTexture(kNormalsViewIn);
 
-    ref<Texture> pAOMaskOut = renderData.getTexture(kAOOut);
+    ref<Texture> pAOOut = renderData.getTexture(kAOOut);
+    ref<Texture> pAOMaskOut = renderData.getTexture(kAOMaskOut);
 
     if (!pLinearDepthIn || !pNormalIn)
     {
         return;
     }
 
-    pRenderContext->clearTexture(pAOMaskOut.get(), float4(1.f));
+    pRenderContext->clearTexture(pAOOut.get(), float4(1.f));
 
     if (mpComputePass)
     {
@@ -139,7 +143,12 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
         SetCommonVars(vars);
 
         vars["PerFrameCB"]["guardBand"] = 0;
-        vars["gAOOut"] = pAOMaskOut;
+        vars["gAOOut"] = pAOOut;
+
+        if (mSVAOInputMode)
+        {
+            vars["gStencil"] = pAOMaskOut;
+        }
 
         uint2 nThreads = renderData.getDefaultTextureDims();
         nThreads = ((nThreads + 31u) / 32u) * 32u;
@@ -152,5 +161,8 @@ void VAO::renderUI(Gui::Widgets& widget)
 {
     VAOBase::renderUI(widget);
 
-    widget.checkbox("SVAO input Mode", mSVAOInputMode);
+    if (widget.checkbox("SVAO input Mode", mSVAOInputMode))
+    {
+        requestRecompile();
+    }
 }

@@ -71,20 +71,19 @@ SamplerState gTextureSampler;
 Texture2D<float> gLinearDepthIn;
 Texture2D<float4> gLinearSDIn;
 
-Texture2D<float3> gNormalIn;
+Texture2D<uint> gNormalIn;
 Texture2D<float> gNoiseTex;
 
 float3 loadNormal(float2 texC)
 {
-    return gNormalIn[texC * gData.resolution];
-    // float3 packedNormal = gNormalTex[texC * gData.resolution];
-    //return decodeNormal2x16(packedNormal);
-    // return decodeNormal2x8(packedNormal);
+    // return gNormalIn[texC * gData.resolution];
+    uint packedNormal = gNormalIn[texC * gData.resolution];
+    return decodeNormal2x8(packedNormal);
 }
 
 float2 getScreenClampedUV(float2 uvstart, float2 uvend)
 {
-    return saturate(uvend); // this actually does not make much of a difference but costs a little bit more...
+    return saturate(uvend);
 }
 
 float2 getSDClampedUV(float2 uvstart, float2 uvend)
@@ -145,15 +144,12 @@ int2 UVToSDPixel(float2 uv)
 
 float makeNonZero(float value, float epsilon)
 {
-    // float absValue = max(abs(value), epsilon);
+    const float absValue = max(abs(value), epsilon);
 
-    // [flatten] if (value >= 0)
-    //     return absValue;
-    // else
-    //     return -absValue;
-
-    float absValue = max(abs(value), epsilon);
-    return value >= 0 ? absValue : -absValue;
+    [flatten] if (value >= 0)
+        return absValue;
+    else
+        return -absValue;
 }
 
 // get rid of shadowing around edges
@@ -202,6 +198,8 @@ float4 getTexelPointWeight(float4 w)
 {
     int maxIdx = 0;
     float maxVal = w[0];
+
+    [unroll]
     for (int i = 1; i < 4; ++i)
     {
         if (w[i] > maxVal)
@@ -211,9 +209,15 @@ float4 getTexelPointWeight(float4 w)
         }
     }
     float4 res = 0.0;
+
+    [unroll]
     for (int i = 1; i < 4; ++i)
+    {
         if (i == maxIdx)
+        {
             res[i] = 1.0;
+        }
+    }
 
     return res;
 }
@@ -229,9 +233,6 @@ float3 RayToViewSpace(RayDesc ray, float t)
 // r: radius in view/world space
 float2 ViewSpaceRadiusToUVRadius(float z, float r)
 {
-    //const float2 imageScale = 0.5 * float2(gCamera.data.frameWidth / gCamera.data.focalLength, gCamera.data.frameHeight / gCamera.data.focalLength);
-    //float2 ndc = float2(r) / (imageScale * z); // radius in normalized device coordinates
-    //return ndc * 0.5; // scale to uv radius
     return float2(r * gCamera.data.focalLength) / (float2(gCamera.data.frameWidth, gCamera.data.frameHeight) * z); // radius in normalized device coordinates
 }
 
@@ -246,9 +247,6 @@ float GetAORadiusInPixels(float ViewDepth)
 float GetMaxAORadius(float2 texC)
 {
     return gData.ssMaxRadius;
-    //float2 pixel = texC * gData.resolution;
-    //float sdBorder = gData.sdGuard * STOCH_MAP_DIVISOR; // border size in pixels in relation to the primary depth map size
-    //return max(min(min(pixel.x, pixel.y), min(gData.resolution.x - pixel.x, gData.resolution.y - pixel.y)) + sdBorder, float(guardBand) + sdBorder);
 }
 
 struct BasicAOData
@@ -280,7 +278,9 @@ struct BasicAOData
         }
 
         if (radiusInPixels < 0.5)
+        {
             return false;
+        }
 
         posV = UVToViewSpace(texC, linearDepth);
         posVLength = length(posV);
@@ -288,7 +288,9 @@ struct BasicAOData
         // view space normal of current pixel
         normalV = loadNormal(texC);
         if (dot(posV, normalV) > 0.0)
+        {
             normalV = -normalV;
+        }
 
         // Calculate tangent space (use random direction for tangent orientation)
         float randRotation = gNoiseTex.SampleLevel(gNoiseSampler, texC * gData.noiseScale, 0) * 2.0 * 3.141;

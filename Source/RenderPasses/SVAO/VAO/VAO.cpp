@@ -42,13 +42,8 @@ namespace
 
     namespace Shaders
     {
-        const std::string kSVAOPass = "RenderPasses/SVAO/SVAORaster.ps.slang";
+        const std::string kVAOPass = "RenderPasses/SVAO/VAO/SVAORaster.ps.slang";
     }
-}
-
-extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
-{
-    registry.registerClass<RenderPass, VAO>();
 }
 
 VAO::VAO(ref<Device> pDevice, const Properties& props) : VAOBase(pDevice, props)
@@ -101,7 +96,7 @@ void VAO::compile(RenderContext* pRenderContext, const CompileData& compileData)
         defines.add("SECONDARY_DEPTH_MODE", mSVAOInputMode ? "1" : "0");
 
         ProgramDesc computeShaderDesc;
-        mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kSVAOPass, "main", defines);
+        mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kVAOPass, "main", defines);
     }
 }
 
@@ -131,16 +126,11 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     {
         FALCOR_PROFILE(pRenderContext, "VAO First Pass");
 
-        auto vars = mpComputePass->getRootVar();
-        Camera* pCamera = mpScene->getCamera().get();
-        pCamera->bindShaderData(vars["PerFrameCB"]["gCamera"]);
-        vars["PerFrameCB"]["invViewMat"] = inverse(pCamera->getViewMatrix());
-        vars["PerFrameCB"]["frameIndex"] = mFrameIndex;
+        ShaderVar vars = mpComputePass->getRootVar();
+        SetCommonVars(vars, mpScene.get());
 
         vars["gLinearDepthIn"] = pLinearDepthIn;
         vars["gNormalIn"] = pNormalIn;
-
-        SetCommonVars(vars);
 
         vars["PerFrameCB"]["guardBand"] = 0;
         vars["gAOOut"] = pAOOut;

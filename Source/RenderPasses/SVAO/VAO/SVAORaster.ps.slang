@@ -1,5 +1,5 @@
 import Scene.RaytracingInline;
-#include "Common.slang"
+#include "../Common.slang"
 
 #if SECONDARY_DEPTH_MODE == DEPTH_MODE_SINGLE
 // disable all stencil operations if no secondary pass exists

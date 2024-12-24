@@ -1,9 +1,9 @@
 import Scene.RaytracingInline;
-#include "Common.slang"
+#include "../Common.slang"
 
 // inputs from previous stage
-Texture2D<uint> aoMask;
-RWTexture2D<unorm float> aoPrev;
+Texture2D<uint> gAOMaskIn;
+RWTexture2D<unorm float> gAOInOut;
 
 [numthreads(16, 16, 1)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localId : SV_GroupThreadID)
@@ -13,12 +13,12 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     uint2 svPos = id.xy + uint2(guardBand); // pixel position
     float2 texC = (svPos + float2(0.5)) * gData.invResolution; // texture position
 
-    uint mask = aoMask[uint2(svPos.xy)];
+    uint mask = gAOMaskIn[uint2(svPos.xy)];
     if(mask == 0)
         return;
 
     float visibility = calcAO2(svPos, mask);
-    visibility += float(aoPrev[svPos]);
+    visibility += float(gAOInOut[svPos]);
     visibility = BasicAOData.finalize(visibility);
-    aoPrev[svPos] = visibility;
+    gAOInOut[svPos] = visibility;
 }

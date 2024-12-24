@@ -1,5 +1,8 @@
 ﻿#include "VAOBase.h"
 
+#include "SVAO.h"
+#include "VAO.h"
+
 namespace
 {
     namespace VAOArgs
@@ -8,6 +11,13 @@ namespace
         const std::string kExponent = "kVaoExponent";
         const std::string kSampleCount = "kSampleCount";
     }
+}
+
+
+extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
+{
+    registry.registerClass<RenderPass, VAO>();
+    registry.registerClass<RenderPass, SVAO>();
 }
 
 VAOBase::VAOBase(ref<Device> pDevice, const Properties& props) : RenderPass(pDevice)
@@ -43,12 +53,17 @@ DefineList VAOBase::GetCommonDefines(const CompileData& compileData)
     return defines;
 }
 
-void VAOBase::SetCommonVars(ShaderVar& vars)
+void VAOBase::SetCommonVars(ShaderVar& vars, Scene* pScene)
 {
     vars["StaticCB"].setBlob(mVaoData);
     vars["gNoiseSampler"] = mpPointSampler;
     vars["gTextureSampler"] = mpLinearSampler;
     vars["gNoiseTex"] = mpDitherTexture;
+
+    Camera* pCamera = pScene->getCamera().get();
+    pCamera->bindShaderData(vars["PerFrameCB"]["gCamera"]);
+    vars["PerFrameCB"]["invViewMat"] = inverse(pCamera->getViewMatrix());
+    vars["PerFrameCB"]["frameIndex"] = mFrameIndex;
 }
 void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {

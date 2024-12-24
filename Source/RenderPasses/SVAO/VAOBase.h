@@ -39,7 +39,7 @@ public:
 protected:
     DefineList GetCommonDefines(const CompileData& compileData);
 
-    void SetCommonVars(ShaderVar& vars);
+    void SetCommonVars(ShaderVar& vars, Scene* pScene);
 
 public:
     void compile(RenderContext* pRenderContext, const CompileData& compileData) override;

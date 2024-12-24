@@ -29,7 +29,6 @@
 
 #include "Falcor.h"
 #include "VAOBase.h"
-#include "VAOData.slang"
 #include "RenderGraph/RenderPass.h"
 
 using namespace Falcor;
@@ -40,7 +39,6 @@ public:
     FALCOR_PLUGIN_CLASS(VAO, "VAO", "Volumetric Ambient Occasion");
 
     VAO(ref<Device> pDevice, const Properties& props);
-
     static ref<VAO> create(ref<Device> pDevice, const Properties& props);
 
     virtual Properties getProperties() const override;

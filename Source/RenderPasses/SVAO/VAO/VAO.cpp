@@ -124,8 +124,6 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
 
     if (mpComputePass)
     {
-        FALCOR_PROFILE(pRenderContext, "VAO First Pass");
-
         ShaderVar vars = mpComputePass->getRootVar();
         SetCommonVars(vars, mpScene.get());
 

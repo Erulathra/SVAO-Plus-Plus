@@ -1,4 +1,5 @@
 add_subdirectory(AccumulatePass)
+add_subdirectory(BilateralBlur)
 add_subdirectory(BlinnPhong)
 add_subdirectory(BlitPass)
 add_subdirectory(BSDFOptimizer)

@@ -3,7 +3,7 @@ import Rendering.Materials.TexLODHelpers;
 import Rendering.Materials.TexLODTypes;
 
 RWTexture2D<float4> gStochasticDepthOut;
-Texture2D<uint> maskTex;
+Texture2D<uint> aoMaskIn;
 
 #ifndef NUM_SAMPLES
 #define NUM_SAMPLES 4
@@ -39,7 +39,6 @@ void anyHit(inout RayData rayData, BuiltInTriangleIntersectionAttributes attribs
     {
         IgnoreHit();
     }
-    // else AcceptHitAndEndSearch(); // performance hit from this is very minor
 }
 
 [shader("miss")]
@@ -57,9 +56,7 @@ void rayGen()
 {
     uint2 svPos = DispatchRaysIndex().xy;
 
-    uint mask = maskTex[svPos] & 0xFF;
-    //if (mask == 0u)
-    //    return;
+    uint mask = aoMaskIn[svPos] & 0xFF;
 
     RayDesc ray = initRayDesc(svPos, DispatchRaysDimensions().xy);
 

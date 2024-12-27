@@ -45,8 +45,6 @@ namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
-
-
     registry.registerClass<RenderPass, RTStochasticDepth>();
 }
 
@@ -61,10 +59,7 @@ RTStochasticDepth::RTStochasticDepth(ref<Device> pDevice, const Properties& prop
     // Parse dictionary.
     for (const auto& [key, value] : props)
     {
-        if (key == kResolutionDivisor)
-        {
-            mResolutionDivisor = value;
-        }
+        if (key == kResolutionDivisor) mResolutionDivisor = value;
     }
 }
 
@@ -80,6 +75,9 @@ RenderPassReflection RTStochasticDepth::reflect(const CompileData& compileData)
     RenderPassReflection reflector;
 
     reflector.addInput(kLinearDepthIn, "linear depth (linear z values)").bindFlags(ResourceBindFlags::ShaderResource);
+
+    reflector.addInput(kRayMinIn, "minimal depth values").flags(RenderPassReflection::Field::Flags::Optional);
+    reflector.addInput(kRayMaxIn, "maximal depth values").flags(RenderPassReflection::Field::Flags::Optional);
 
     uint2 depthMapResolution = uint2(compileData.defaultTexDims.x / mResolutionDivisor, compileData.defaultTexDims.y / mResolutionDivisor);
     reflector.addOutput(kStochasticDepthOut, "Stochastic depth (packed intro 4 color channels)")
@@ -110,6 +108,10 @@ void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData&
         DefineList defines = mpScene->getSceneDefines();
         const float rayConeSpread = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(renderData.getDefaultTextureDims().y);
         defines.add("RAY_CONE_SPREAD", std::to_string(rayConeSpread));
+
+        const bool useRayInterval = renderData.getTexture(kRayMinIn) && renderData.getTexture(kRayMaxIn);
+        defines.add("USE_RAY_INTERVAL", useRayInterval ? "1" : "0");
+
         ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
         desc.addShaderLibrary(kProgramRayShaderPath);
@@ -132,6 +134,15 @@ void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData&
     ShaderVar pVars = mRtProgram.pVars->getRootVar();
     pVars["gLinearDepthIn"] = pLinearDepthIn;
     pVars["gStochasticDepthOut"] = pStochasticDepthOut;
+
+    ref<Texture> pRayMinIn = renderData.getTexture(kRayMinIn);
+    ref<Texture> pRayMaxIn = renderData.getTexture(kRayMaxIn);
+
+    if (pRayMinIn && pRayMaxIn)
+    {
+        pVars["gRayMinIn"] = pRayMinIn;
+        pVars["gRayMaxIn"] = pRayMaxIn;
+    }
 
     mpScene->raytrace(pRenderContext, mRtProgram.pProgram.get(), mRtProgram.pVars, uint3{pStochasticDepthOut->getWidth(), pStochasticDepthOut->getHeight(), 1});
 }

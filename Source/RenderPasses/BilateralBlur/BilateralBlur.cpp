@@ -136,19 +136,25 @@ void BilateralBlur::execute(RenderContext* pRenderContext, const RenderData& ren
         varsVertical["gColorOut"] = pColorOut;
     }
 
+    const uint2 nThreads = renderData.getDefaultTextureDims();
+
     for (uint i = 0; i < mNumIterations; ++i)
     {
-        uint2 nThreads = renderData.getDefaultTextureDims();
-        nThreads = ((nThreads + 31u) / 32u) * 32u;
+        {
+            FALCOR_PROFILE(pRenderContext, "Blur Horizontal");
+            mpComputePassHorizontal->execute(pRenderContext, nThreads.x, nThreads.y);
+        }
 
-        mpComputePassHorizontal->execute(pRenderContext, nThreads.x, nThreads.y);
-        mpComputePassVertical->execute(pRenderContext, nThreads.x, nThreads.y);
+        {
+            FALCOR_PROFILE(pRenderContext, "Blur Vertical");
+            mpComputePassVertical->execute(pRenderContext, nThreads.x, nThreads.y);
+        }
     }
 }
 
 void BilateralBlur::renderUI(Gui::Widgets& widget)
 {
-    bool bRequiresRecompile = true;
+    bool bRequiresRecompile = false;
 
     bRequiresRecompile |= widget.var("Kernel Radius", mKernelSize, 0u, 20u);
     bRequiresRecompile |= widget.var("Number of iterations", mNumIterations, 0u, 20u);

@@ -14,8 +14,8 @@ struct PSOut
     STENCIL(uint stencil);
 };
 
-RWTexture2D<uint> gRayMinAccess;
-RWTexture2D<uint> gRayMaxAccess;
+RWTexture2D<uint> gRayMinOut;
+RWTexture2D<uint> gRayMaxOut;
 
 RWTexture2D<unorm float> gAOOut;
 RWTexture2D<uint> gStencil;
@@ -79,15 +79,13 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
                 uint2 pixel = UVToSDPixel(s.samplePosUV);
 #if USE_RAY_INTERVAL
                 uint rayMin, rayMax;
-                float objectSpaceMin;
-                if(AO_KERNEL == AO_KERNEL_VAO) objectSpaceMin = min(s.objectSpaceZ, data.radius + gData.thickness * data.radius + s.sphereStart);
-                if(AO_KERNEL == AO_KERNEL_HBAO) objectSpaceMin = min(s.objectSpaceZ, s.sphereStart);
+                float objectSpaceMin = min(s.objectSpaceZ, data.radius + gData.thickness * data.radius + s.sphereStart);
                 rayMin = /*rough estimate of depth*/asuint(max(data.posVLength - objectSpaceMin, 0.0));
                 rayMax = /*rough estimate of depth*/asuint(max(data.posVLength - s.sphereEnd, 0.0));
-                InterlockedMin(gRayMinAccess[pixel], rayMin);
-                InterlockedMax(gRayMaxAccess[pixel], rayMax);
-#else // no interval (only set flag)
-                gRayMaxAccess[pixel] = 1u;
+                InterlockedMin(gRayMinOut[pixel], rayMin);
+                InterlockedMax(gRayMaxOut[pixel], rayMax);
+#else   // no interval (only set flag)
+                gRayMaxOut[pixel] = 1u;
 #endif  // else USE_RAY_INTERVAL
 #endif  // (SECONDARY_DEPTH_MODE == DEPTH_MODE_STOCHASTIC)
             }
@@ -96,7 +94,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
         output.ao1 *= 2.0 / float(NUM_DIRECTIONS);
 
 #if SECONDARY_DEPTH_MODE == DEPTH_MODE_SINGLE
-        output.ao1 = data.finalize(output.ao1); // there is no second shader
+        output.ao1 = data.finalize(output.ao1); // there is no second pass
 #else
         // apply exponent
         if (output.stencil == 0)

@@ -34,10 +34,13 @@ namespace
 
     const std::string kAOOut = "aoOut";
     const std::string kAOMaskOut = "aoMaskOut";
+    const std::string kRayMinOut = "rayMinOut";
+    const std::string kRayMaxOut = "rayMaxOut";
 
     namespace VAOArgs
     {
         const std::string kSVAOInputMode = "SVAOInputMode";
+        const std::string kUseRayInterval = "useRayInterval";
     }
 
     namespace Shaders
@@ -51,6 +54,7 @@ VAO::VAO(ref<Device> pDevice, const Properties& props) : VAOBase(pDevice, props)
     for (const auto& [key, value] : props)
     {
         if (key == VAOArgs::kSVAOInputMode) mSVAOInputMode = value;
+        else if (key == VAOArgs::kUseRayInterval) mUseRayInterval = value;
     }
 }
 
@@ -64,6 +68,7 @@ Properties VAO::getProperties() const
     Properties properties = VAOBase::getProperties();
 
     properties[VAOArgs::kSVAOInputMode] = mSVAOInputMode;
+    properties[VAOArgs::kUseRayInterval] = mUseRayInterval;
 
     return properties;
 }
@@ -83,6 +88,14 @@ RenderPassReflection VAO::reflect(const CompileData& compileData)
                 .bindFlags(ResourceBindFlags::AllColorViews)
                 .format(ResourceFormat::R8Uint);
 
+    reflector.addOutput(kRayMinOut, "Ray start (Ray interval optimization)")
+                .bindFlags(ResourceBindFlags::AllColorViews)
+                .format(ResourceFormat::R32Int);
+
+    reflector.addOutput(kRayMaxOut, "Ray end (Ray interval optimization)")
+                .bindFlags(ResourceBindFlags::AllColorViews)
+                .format(ResourceFormat::R32Int);
+
     return reflector;
 }
 
@@ -94,6 +107,7 @@ void VAO::compile(RenderContext* pRenderContext, const CompileData& compileData)
     {
         DefineList defines = GetCommonDefines(compileData);
         defines.add("SECONDARY_DEPTH_MODE", mSVAOInputMode ? "1" : "0");
+        defines.add("USE_RAY_INTERVAL", mSVAOInputMode && mUseRayInterval ? "1" : "0");
 
         ProgramDesc computeShaderDesc;
         mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kVAOPass, "main", defines);
@@ -115,6 +129,9 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
     ref<Texture> pAOOut = renderData.getTexture(kAOOut);
     ref<Texture> pAOMaskOut = renderData.getTexture(kAOMaskOut);
 
+    ref<Texture> pRayMinOut = renderData.getTexture(kRayMinOut);
+    ref<Texture> pRayMaxOut = renderData.getTexture(kRayMaxOut);
+
     if (!pLinearDepthIn || !pNormalIn)
     {
         return;
@@ -133,6 +150,15 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
         vars["PerFrameCB"]["guardBand"] = 0;
         vars["gAOOut"] = pAOOut;
 
+        if (pRayMinOut && pRayMaxOut)
+        {
+            pRenderContext->clearUAV(pRayMinOut->getUAV().get(), uint4(asuint(std::numeric_limits<float>::max())));
+            pRenderContext->clearUAV(pRayMaxOut->getUAV().get(), uint4(0u));
+
+            vars["gRayMinOut"] = pRayMinOut;
+            vars["gRayMaxOut"] = pRayMaxOut;
+        }
+
         if (mSVAOInputMode)
         {
             vars["gStencil"] = pAOMaskOut;
@@ -149,7 +175,11 @@ void VAO::renderUI(Gui::Widgets& widget)
 {
     VAOBase::renderUI(widget);
 
-    if (widget.checkbox("SVAO input Mode", mSVAOInputMode))
+    bool requiresRecompile = false;
+    requiresRecompile |= widget.checkbox("SVAO input Mode", mSVAOInputMode);
+    requiresRecompile |= widget.checkbox("Use Ray Interval", mUseRayInterval);
+
+    if (requiresRecompile)
     {
         requestRecompile();
     }

@@ -6,20 +6,26 @@ import Utils.Math.HashUtils;
 Texture2D<float> gLinearDepthIn;
 SamplerState S; // linear sampler for downsampling depth on half res
 
-Texture2D<uint> rayMinTex; // contains float values: use asfloat()
-Texture2D<uint> rayMaxTex; // contains float values: use asfloat()
+Texture2D<uint> gRayMinIn; // contains float values: use asfloat()
+Texture2D<uint> gRayMaxIn; // contains float values: use asfloat()
 
-#define USE_RAY_INTERVAL 0
+#ifndef USE_RAY_INTERVAL
+#define USE_RAY_INTERVAL 1
+#endif // USE_RAY_INTERVAL
 
+#ifndef GUARD_BAND
 #define GUARD_BAND false
+#endif // GUARD_BAND
 
+#ifndef NORMALIZE
 #define NORMALIZE true
+#endif // NORMALIZE
 
 #define DEFAULT_DEPTH (NORMALIZE ? 1.0 : 3.40282347E+37F)
 
 #ifndef NUM_SAMPLES
 #define NUM_SAMPLES 4
-#endif
+#endif // NUM_SAMPLES
 
 #define MAX_COUNT 8
 
@@ -50,13 +56,20 @@ RayDesc initRayDesc(int2 pixel, int2 dim)
     ray.TMin = ViewDepthToRay(ray.Direction, depth) + epsilon; // start after first known hit
 
 #if USE_RAY_INTERVAL
-    uint iRayMin = rayMinTex[pixel];
-    if (iRayMin != 0u) // test if valid values
-        ray.TMin = max(asfloat(iRayMin), ray.TMin);
+    uint iRayMin = gRayMinIn[pixel];
+    uint iRayMax = gRayMaxIn[pixel];
 
-    uint iRayMax = rayMaxTex[pixel];
+    // [flatten]
+    if (iRayMin != 0u) // test if valid values
+    {
+        ray.TMin = max(asfloat(iRayMin), ray.TMin);
+    }
+
+    // [flatten]
     if (iRayMax != 0u) // test if valid values
+    {
         ray.TMax = min(asfloat(iRayMax), ray.TMax);
+    }
 #endif
 
     return ray;

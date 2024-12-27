@@ -54,5 +54,6 @@ private:
     ref<ComputePass> mpComputePass;
 
     bool mSVAOInputMode = false;
+    bool mUseRayInterval = false;
 };
 

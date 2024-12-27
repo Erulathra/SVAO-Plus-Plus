@@ -31,7 +31,7 @@ VAOBase::VAOBase(ref<Device> pDevice, const Properties& props) : RenderPass(pDev
     samplerDesc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
     mpLinearSampler = pDevice->createSampler(samplerDesc);
 
-    mpDitherTexture = GenerateDitherTexture(pDevice);
+    mpDitherTexture = generateDitherTexture(pDevice);
 
     for (const auto& [key, value] : props)
     {
@@ -72,7 +72,7 @@ void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileD
     mVaoData.resolution = float2(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
     mVaoData.invResolution = float2(1.0f) / mVaoData.resolution;
     mVaoData.sdGuard = 0.f;
-    mVaoData.lowResolution = mVaoData.resolution; /** getStochMapSize(compileData.defaultTexDims, false); */ // false = dont include guard band here
+    mVaoData.lowResolution = getStochMapSize(compileData.defaultTexDims);
     mVaoData.noiseScale = mVaoData.resolution / 4.0f; // noise texture is 4x4 resolution
 }
 
@@ -87,6 +87,13 @@ void VAOBase::execute(RenderContext* pRenderContext, const RenderData& renderDat
 }
 void VAOBase::renderUI(Gui::Widgets& widget)
 {
+    const static Gui::DropdownList kResolutionDivisorDropdownList = {
+        {1, "1"},
+        {2, "2"},
+        {3, "3"},
+        {4, "4"}
+    };
+
     bool requiresRecompile = false;
 
     // VAO
@@ -100,6 +107,8 @@ void VAOBase::renderUI(Gui::Widgets& widget)
         requiresRecompile |= group.dropdown("NumSamples", kVaoSampleCount, mSampleCount);
     }
 
+    requiresRecompile |= widget.dropdown("SDMap resolution divisor", kResolutionDivisorDropdownList, mSDMapResolutionDivisor);
+
     if (requiresRecompile)
     {
         requestRecompile();
@@ -108,6 +117,7 @@ void VAOBase::renderUI(Gui::Widgets& widget)
 
 Properties VAOBase::getProperties() const
 {
+
     Properties properties = RenderPass::getProperties();
 
     properties[VAOArgs::kRadius] = mVaoData.radius;
@@ -123,7 +133,7 @@ void VAOBase::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
     requestRecompile();
 }
 
-ref<Texture> VAOBase::GenerateDitherTexture(const ref<Device>& pDevice)
+ref<Texture> VAOBase::generateDitherTexture(const ref<Device>& pDevice)
 {
     // https://en.wikipedia.org/wiki/Ordered_dithering
     constexpr uint32_t ditherTextureSize = 4;
@@ -143,4 +153,22 @@ ref<Texture> VAOBase::GenerateDitherTexture(const ref<Device>& pDevice)
     }
 
     return pDevice->createTexture2D(ditherTextureSize, ditherTextureSize, ResourceFormat::R8Unorm, 1, 1, data.data());
+}
+
+uint2 VAOBase::getStochMapSize(uint2 fullRes, bool includeGuard) const
+{
+    auto internalMapsRes = fullRes;
+    if (mSDMapResolutionDivisor > 1)
+    {
+        internalMapsRes.x = (internalMapsRes.x + mSDMapResolutionDivisor - 1) / mSDMapResolutionDivisor;
+        internalMapsRes.y = (internalMapsRes.y + mSDMapResolutionDivisor - 1) / mSDMapResolutionDivisor;
+    }
+
+    // if (includeGuard)
+    // {
+    //     internalMapsRes.x += 2 * getExtraGuardBand(); // expand internal size with the extra guard band from the SD-map
+    //     internalMapsRes.y += 2 * getExtraGuardBand();
+    // }
+
+    return internalMapsRes;
 }

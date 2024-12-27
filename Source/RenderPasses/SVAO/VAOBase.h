@@ -61,9 +61,11 @@ protected:
     VAOData mVaoData;
 
     uint32_t mSampleCount = 8;
-
     int32_t mFrameIndex = 0;
 
+    uint mSDMapResolutionDivisor = 1;
+
 private:
-    static ref<Texture> GenerateDitherTexture(const ref<Device>& pDevice);
+    static ref<Texture> generateDitherTexture(const ref<Device>& pDevice);
+    uint2 getStochMapSize(uint2 fullRes, bool includeGuard = false) const;
 };

@@ -54,7 +54,8 @@ RenderPassReflection NormalsToViewSpace::reflect(const CompileData& compileData)
     // Define the required resources here
     RenderPassReflection reflector;
     reflector.addInput(kNormalsWorldIn, "Normals in World Space");
-    reflector.addOutput(kNormalsViewOut, "Normals In View Space");
+    reflector.addOutput(kNormalsViewOut, "Normals In View Space")
+        .format(ResourceFormat::R16Uint);
     return reflector;
 }
 

@@ -28,6 +28,8 @@
 
 #include "BilateralBlur.h"
 
+#include "Core/Pass/FullScreenPass.h"
+
 namespace
 {
     std::string kColorIn = "colorIn";
@@ -58,6 +60,13 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
 BilateralBlur::BilateralBlur(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
+    mpFbo = Fbo::create(mpDevice);
+
+    Sampler::Desc samplerDesc;
+    samplerDesc.setFilterMode(TextureFilteringMode::Point, TextureFilteringMode::Point, TextureFilteringMode::Point);
+    samplerDesc.setAddressingMode(TextureAddressingMode::Clamp, TextureAddressingMode::Clamp, TextureAddressingMode::Clamp);
+    mpSampler = pDevice->createSampler(samplerDesc);
+
     for (const auto& [key, value] : props)
     {
         if (key == BlurArgs::kNumIterations) mNumIterations = value;
@@ -86,11 +95,11 @@ RenderPassReflection BilateralBlur::reflect(const CompileData& compileData)
 
     reflector.addInternal(kTempInternal, "Internal temp texture")
         .format(ResourceFormat::R8Unorm)
-        .bindFlags(ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        .bindFlags(ResourceBindFlags::AllColorViews);
 
     reflector.addOutput(kColorOut, "Output Texture")
         .format(ResourceFormat::R8Unorm)
-        .bindFlags(ResourceBindFlags::UnorderedAccess | ResourceBindFlags::ShaderResource);
+        .bindFlags(ResourceBindFlags::AllColorViews);
 
     return reflector;
 }
@@ -104,10 +113,10 @@ void BilateralBlur::compile(RenderContext* pRenderContext, const CompileData& co
     defines.add("BETTER_SLOPE", std::to_string(static_cast<uint>(mBetterSlope)));
 
     defines.add("DIRECTION", "float2(1.f, 0.f)");
-    mpComputePassHorizontal = ComputePass::create(pRenderContext->getDevice(), Shaders::kBilateralBlur, "main", defines);
+    mpHorizontalPass = FullScreenPass::create(pRenderContext->getDevice(), Shaders::kBilateralBlur, defines);
 
     defines["DIRECTION"] = "float2(0.f, 1.f)";
-    mpComputePassVertical = ComputePass::create(pRenderContext->getDevice(), Shaders::kBilateralBlur, "main", defines);
+    mpVerticalPass = FullScreenPass::create(pRenderContext->getDevice(), Shaders::kBilateralBlur, defines);
 }
 
 void BilateralBlur::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -125,29 +134,31 @@ void BilateralBlur::execute(RenderContext* pRenderContext, const RenderData& ren
     }
 
     {
-        ShaderVar varsHorizontal = mpComputePassHorizontal->getRootVar();
+        ShaderVar varsHorizontal = mpHorizontalPass->getRootVar();
         varsHorizontal["gColorIn"] = pColorIn;
         varsHorizontal["gLinearDepthIn"] = pLinearDepthIn;
-        varsHorizontal["gColorOut"] = pTempTexture;
+        // varsHorizontal["gColorOut"] = pTempTexture;
+        varsHorizontal["gSampler"] = mpSampler;
 
-        ShaderVar varsVertical = mpComputePassVertical->getRootVar();
+        ShaderVar varsVertical = mpVerticalPass->getRootVar();
         varsVertical["gColorIn"] = pTempTexture;
         varsVertical["gLinearDepthIn"] = pLinearDepthIn;
-        varsVertical["gColorOut"] = pColorOut;
+        // varsVertical["gColorOut"] = pColorOut;
+        varsVertical["gSampler"] = mpSampler;
     }
-
-    const uint2 nThreads = renderData.getDefaultTextureDims();
 
     for (uint i = 0; i < mNumIterations; ++i)
     {
         {
             FALCOR_PROFILE(pRenderContext, "Blur Horizontal");
-            mpComputePassHorizontal->execute(pRenderContext, nThreads.x, nThreads.y);
+            mpFbo->attachColorTarget(pTempTexture, 0);
+            mpHorizontalPass->execute(pRenderContext, mpFbo);
         }
 
         {
             FALCOR_PROFILE(pRenderContext, "Blur Vertical");
-            mpComputePassVertical->execute(pRenderContext, nThreads.x, nThreads.y);
+            mpFbo->attachColorTarget(pColorOut, 0);
+            mpVerticalPass->execute(pRenderContext, mpFbo);
         }
     }
 }

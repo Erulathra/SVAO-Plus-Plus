@@ -58,12 +58,18 @@ void BlurDirection(inout float AO, inout float weightSum, float slope, int sign)
     }
 }
 
-[numthreads(8, 8, 1)]
-void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localId : SV_GroupThreadID)
+
+struct PSIn
+{
+    float2 texC : TEXCOORD;
+    float4 pos : SV_POSITION;
+};
+
+float main(PSIn psIn) : SV_TARGET
 {
     float2 gDUV = INV_RESOLUTION * DIRECTION;
 
-    float2 uv = id.xy * INV_RESOLUTION;
+    float2 uv = psIn.texC;
 
     //fill depth cache
     [unroll]
@@ -86,5 +92,6 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     BlurDirection(AO, weightSum, minSlope, 1);
     BlurDirection(AO, weightSum, -minSlope, -1);
 
-    gColorOut[id.xy] = AO / weightSum;
+    // gColorOut[id.xy] = AO / weightSum;
+    return AO / weightSum;
 }

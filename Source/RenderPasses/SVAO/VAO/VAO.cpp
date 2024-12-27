@@ -155,8 +155,8 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
             pRenderContext->clearUAV(pRayMinOut->getUAV().get(), uint4(asuint(std::numeric_limits<float>::max())));
             pRenderContext->clearUAV(pRayMaxOut->getUAV().get(), uint4(0u));
 
-            vars["gRayMinOut"] = pRayMinOut;
             vars["gRayMaxOut"] = pRayMaxOut;
+            vars["gRayMinOut"] = pRayMinOut;
         }
 
         if (mSVAOInputMode)

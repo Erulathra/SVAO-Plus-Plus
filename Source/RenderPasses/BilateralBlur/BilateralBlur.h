@@ -31,6 +31,11 @@
 
 using namespace Falcor;
 
+namespace Falcor
+{
+class FullScreenPass;
+}
+
 class BilateralBlur : public RenderPass
 {
 public:
@@ -50,8 +55,11 @@ public:
     virtual void renderUI(Gui::Widgets& widget) override;
 
 private:
-    ref<ComputePass> mpComputePassVertical;
-    ref<ComputePass> mpComputePassHorizontal;
+    ref<Fbo> mpFbo;
+    ref<Sampler> mpSampler;
+
+    ref<FullScreenPass> mpVerticalPass;
+    ref<FullScreenPass> mpHorizontalPass;
 
     uint mNumIterations = 1;
     uint mKernelSize = 4;

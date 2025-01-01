@@ -2,6 +2,7 @@
 
 #include "SVAO.h"
 #include "VAO.h"
+#include "Utils/Math/SDMath.h"
 
 namespace
 {
@@ -10,6 +11,9 @@ namespace
         const std::string kRadius = "kVaoRadius";
         const std::string kExponent = "kVaoExponent";
         const std::string kSampleCount = "kSampleCount";
+
+        const std::string kResolutionDivisor = "resolutionDivisor";
+        const std::string kEnableSDGuardBand = "enableGuardBand";
     }
 }
 
@@ -38,6 +42,8 @@ VAOBase::VAOBase(ref<Device> pDevice, const Properties& props) : RenderPass(pDev
         if (key == VAOArgs::kRadius) mVaoData.radius = value;
         else if (key == VAOArgs::kExponent) mVaoData.exponent = value;
         else if (key == VAOArgs::kSampleCount) mSampleCount = value;
+        else if (key == VAOArgs::kResolutionDivisor) mSDMapResolutionDivisor = value;
+        else if (key == VAOArgs::kEnableSDGuardBand) mEnableGuardBand = value;
     }
 }
 
@@ -64,6 +70,7 @@ void VAOBase::SetCommonVars(ShaderVar& vars, Scene* pScene)
     pCamera->bindShaderData(vars["PerFrameCB"]["gCamera"]);
     vars["PerFrameCB"]["invViewMat"] = inverse(pCamera->getViewMatrix());
     vars["PerFrameCB"]["frameIndex"] = mFrameIndex;
+    vars["PerFrameCB"]["guardBand"] = getExtraGuardBand();
 }
 void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileData)
 {
@@ -71,7 +78,7 @@ void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileD
 
     mVaoData.resolution = float2(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
     mVaoData.invResolution = float2(1.0f) / mVaoData.resolution;
-    mVaoData.sdGuard = 0.f;
+    mVaoData.sdGuard = mEnableGuardBand ? getExtraGuardBand() : 0;
     mVaoData.lowResolution = getStochMapSize(compileData.defaultTexDims);
     mVaoData.noiseScale = mVaoData.resolution / 4.0f; // noise texture is 4x4 resolution
 }
@@ -108,6 +115,7 @@ void VAOBase::renderUI(Gui::Widgets& widget)
     }
 
     requiresRecompile |= widget.dropdown("SDMap resolution divisor", kResolutionDivisorDropdownList, mSDMapResolutionDivisor);
+    requiresRecompile |= widget.checkbox("Enable Guard Band", mEnableGuardBand);
 
     if (requiresRecompile)
     {
@@ -117,12 +125,13 @@ void VAOBase::renderUI(Gui::Widgets& widget)
 
 Properties VAOBase::getProperties() const
 {
-
     Properties properties = RenderPass::getProperties();
 
     properties[VAOArgs::kRadius] = mVaoData.radius;
     properties[VAOArgs::kExponent] = mVaoData.exponent;
     properties[VAOArgs::kSampleCount] = mSampleCount;
+    properties[VAOArgs::kResolutionDivisor] = mSDMapResolutionDivisor;
+    properties[VAOArgs::kEnableSDGuardBand] = mEnableGuardBand;
 
     return properties;
 }
@@ -157,18 +166,10 @@ ref<Texture> VAOBase::generateDitherTexture(const ref<Device>& pDevice)
 
 uint2 VAOBase::getStochMapSize(uint2 fullRes, bool includeGuard) const
 {
-    auto internalMapsRes = fullRes;
-    if (mSDMapResolutionDivisor > 1)
-    {
-        internalMapsRes.x = (internalMapsRes.x + mSDMapResolutionDivisor - 1) / mSDMapResolutionDivisor;
-        internalMapsRes.y = (internalMapsRes.y + mSDMapResolutionDivisor - 1) / mSDMapResolutionDivisor;
-    }
+    return SDMath::getStochMapSize(fullRes, includeGuard, mSDMapResolutionDivisor);
+}
 
-    // if (includeGuard)
-    // {
-    //     internalMapsRes.x += 2 * getExtraGuardBand(); // expand internal size with the extra guard band from the SD-map
-    //     internalMapsRes.y += 2 * getExtraGuardBand();
-    // }
-
-    return internalMapsRes;
+int32_t VAOBase::getExtraGuardBand() const
+{
+    return SDMath::getExtraGuardBand(mSDMapResolutionDivisor, mStochMapGuardBand);
 }

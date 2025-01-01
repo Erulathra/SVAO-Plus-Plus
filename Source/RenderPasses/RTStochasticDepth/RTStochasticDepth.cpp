@@ -27,6 +27,8 @@
  **************************************************************************/
 #include "RTStochasticDepth.h"
 
+#include "Utils/Math/SDMath.h"
+
 #include <utility>
 
 namespace
@@ -41,6 +43,9 @@ namespace
     const std::string kProgramRayShaderPath = "RenderPasses/RTStochasticDepth/StochasticDepthMapRT.rt.slang";
 
     const std::string kResolutionDivisor = "resolutionDivisor";
+    const std::string kEnableGuardBand = "enableGuardBand";
+
+    const uint32_t kBaseGuardBandSize = 512;
 }
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -60,6 +65,7 @@ RTStochasticDepth::RTStochasticDepth(ref<Device> pDevice, const Properties& prop
     for (const auto& [key, value] : props)
     {
         if (key == kResolutionDivisor) mResolutionDivisor = value;
+        else if (key == kEnableGuardBand) mEnableGuardBand = value;
     }
 }
 
@@ -67,6 +73,7 @@ Properties RTStochasticDepth::getProperties() const
 {
     Properties props;
     props[kResolutionDivisor] = mResolutionDivisor;
+    props[kEnableGuardBand] = mEnableGuardBand;
     return props;
 }
 
@@ -79,13 +86,20 @@ RenderPassReflection RTStochasticDepth::reflect(const CompileData& compileData)
     reflector.addInput(kRayMinIn, "minimal depth values").flags(RenderPassReflection::Field::Flags::Optional);
     reflector.addInput(kRayMaxIn, "maximal depth values").flags(RenderPassReflection::Field::Flags::Optional);
 
-    uint2 depthMapResolution = uint2(compileData.defaultTexDims.x / mResolutionDivisor, compileData.defaultTexDims.y / mResolutionDivisor);
+    // uint2 depthMapResolution = uint2(compileData.defaultTexDims.x / mResolutionDivisor, compileData.defaultTexDims.y /
+    // mResolutionDivisor);
+    const uint2 depthMapResolution = SDMath::getStochMapSize(compileData.defaultTexDims, mEnableGuardBand, mResolutionDivisor);
     reflector.addOutput(kStochasticDepthOut, "Stochastic depth (packed intro 4 color channels)")
         .bindFlags(ResourceBindFlags::AllColorViews)
         .format(ResourceFormat::RGBA32Float)
         .texture2D(depthMapResolution.x, depthMapResolution.y);
 
     return reflector;
+}
+
+void RTStochasticDepth::compile(RenderContext* pRenderContext, const CompileData& compileData)
+{
+    mRtProgram.pProgram.reset();
 }
 
 void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -111,6 +125,7 @@ void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData&
 
         const bool useRayInterval = renderData.getTexture(kRayMinIn) && renderData.getTexture(kRayMaxIn);
         defines.add("USE_RAY_INTERVAL", useRayInterval ? "1" : "0");
+        defines.add("GUARD_BAND", std::to_string(mEnableGuardBand ? SDMath::getExtraGuardBand(mResolutionDivisor, kBaseGuardBandSize) : 0));
 
         ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
@@ -159,6 +174,7 @@ void RTStochasticDepth::renderUI(Gui::Widgets& widget)
     bool bRequestRecompile = false;
 
     bRequestRecompile |= widget.dropdown("ResolutionDivisor", kResolutionDivisorDropdownList, mResolutionDivisor);
+    bRequestRecompile |= widget.checkbox("Enable Guard Band", mEnableGuardBand);
 
     if (bRequestRecompile)
     {

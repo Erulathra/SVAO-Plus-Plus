@@ -29,6 +29,8 @@ import Scene.Camera.CameraData;
 __exported import Utils.Math.Ray;
 import Utils.Math.MathHelpers;
 
+// SS 2024: I need to change pixel type from uint2 to int2 to allow calculation of negative guard band
+
 struct Camera
 {
     CameraData data;
@@ -43,7 +45,7 @@ struct Camera
         \param[in] applyJitter true if jitter should be applied else false.
         \return Returns the camera ray.
     */
-    Ray computeRayPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true)
+    Ray computeRayPinhole(int2 pixel, uint2 frameDim, bool applyJitter = true)
     {
         Ray ray;
 
@@ -65,7 +67,7 @@ struct Camera
         \param[in] applyJitter True if jitter should be applied else false.
         \return Returns the non-normalized ray direction
     */
-    float3 computeNonNormalizedRayDirPinhole(uint2 pixel, uint2 frameDim, bool applyJitter = true)
+    float3 computeNonNormalizedRayDirPinhole(int2 pixel, uint2 frameDim, bool applyJitter = true)
     {
         // Compute sample position in screen space in [0,1] with origin at the top-left corner.
         // The camera jitter offsets the sample by +-0.5 pixels from the pixel center.

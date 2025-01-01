@@ -84,17 +84,19 @@ RenderPassReflection VAO::reflect(const CompileData& compileData)
                 .bindFlags(ResourceBindFlags::AllColorViews)
                 .format(ResourceFormat::R8Unorm);
 
-    reflector.addOutput(kAOMaskOut, "AO Mask (optional)")
-                .bindFlags(ResourceBindFlags::AllColorViews)
-                .format(ResourceFormat::R8Uint);
+    reflector.addOutput(kAOMaskOut, "AO Mask (optional)").bindFlags(ResourceBindFlags::AllColorViews).format(ResourceFormat::R8Uint);
+
+    uint2 sdResolution = getStochMapSize(compileData.defaultTexDims, mEnableGuardBand);
 
     reflector.addOutput(kRayMinOut, "Ray start (Ray interval optimization)")
                 .bindFlags(ResourceBindFlags::AllColorViews)
-                .format(ResourceFormat::R32Int);
+                .format(ResourceFormat::R32Int)
+                .texture2D(sdResolution.x, sdResolution.y);
 
     reflector.addOutput(kRayMaxOut, "Ray end (Ray interval optimization)")
                 .bindFlags(ResourceBindFlags::AllColorViews)
-                .format(ResourceFormat::R32Int);
+                .format(ResourceFormat::R32Int)
+                .texture2D(sdResolution.x, sdResolution.y);
 
     return reflector;
 }

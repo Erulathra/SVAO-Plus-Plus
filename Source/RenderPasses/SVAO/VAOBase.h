@@ -51,6 +51,9 @@ public:
     void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
 
 protected:
+    uint2 getStochMapSize(uint2 fullRes, bool includeGuard = false) const;
+
+protected:
     ref<Scene> mpScene;
 
     ref<Sampler> mpPointSampler;
@@ -60,12 +63,17 @@ protected:
 
     VAOData mVaoData;
 
+    bool mEnableGuardBand = true;
+
+    int32_t mStochMapGuardBand = 512;
+    uint mSDMapResolutionDivisor = 4;
+
     uint32_t mSampleCount = 8;
     int32_t mFrameIndex = 0;
 
-    uint mSDMapResolutionDivisor = 1;
 
 private:
     static ref<Texture> generateDitherTexture(const ref<Device>& pDevice);
-    uint2 getStochMapSize(uint2 fullRes, bool includeGuard = false) const;
+
+    int32_t getExtraGuardBand() const;
 };

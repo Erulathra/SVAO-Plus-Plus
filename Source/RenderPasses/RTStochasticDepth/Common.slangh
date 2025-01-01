@@ -14,7 +14,7 @@ Texture2D<uint> gRayMaxIn; // contains float values: use asfloat()
 #endif // USE_RAY_INTERVAL
 
 #ifndef GUARD_BAND
-#define GUARD_BAND false
+#define GUARD_BAND 0
 #endif // GUARD_BAND
 
 #ifndef NORMALIZE
@@ -43,8 +43,8 @@ float ViewDepthToRay(float3 rayDir, float viewDepth)
 
 RayDesc initRayDesc(int2 pixel, int2 dim)
 {
-    dim = dim - 2 * GUARD_BAND; // remove guard band
-    int2 signedPixel = pixel - GUARD_BAND; // pixel can be negative or bigger than dim, but thats fine for the ray direction
+    dim = dim - int2(2 * GUARD_BAND); // remove guard band
+    int2 signedPixel = pixel - int2(GUARD_BAND); // pixel can be negative or bigger than dim, but thats fine for the ray direction
     RayDesc ray = gScene.camera.computeRayPinhole(signedPixel, dim).toRayDesc();
     ray.Direction = normalize(gScene.camera.computeNonNormalizedRayDirPinhole(signedPixel, dim, true));
 

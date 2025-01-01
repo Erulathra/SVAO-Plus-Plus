@@ -668,6 +668,8 @@ target_sources(Falcor PRIVATE
     Utils/Math/VectorJson.h
     Utils/Math/VectorMath.h
     Utils/Math/VectorTypes.h
+    Utils/Math/SDMath.cpp
+    Utils/Math/SDMath.h
 
     Utils/SampleGenerators/CPUSampleGenerator.h
     Utils/SampleGenerators/DxSamplePattern.cpp

@@ -104,7 +104,8 @@ float4 main(float2 uv : TEXCOORD, float4 svPos : SV_POSITION) : SV_TARGET
     gBuffer.diff = diffOpacity.rgb;
     gBuffer.opacity = diffOpacity.a;
     gBuffer.specular = specRough.rgb;
-    gBuffer.roughness = specRough.a;
+    // We doesn't support reflections so we need to clamp roughness to small value
+    gBuffer.roughness = max(specRough.a, 0.04f);
 
     const float3 viewDir = normalize(gScene.camera.getPosition() - gBuffer.posW);
 

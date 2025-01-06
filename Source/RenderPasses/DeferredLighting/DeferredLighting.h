@@ -33,7 +33,16 @@ namespace Falcor
 {
 class FullScreenPass;
 }
-using namespace Falcor;
+
+using namespace  Falcor;
+
+enum class AOBlendMode : uint32_t
+{
+    None = 0,
+    Naive = 1,
+    AmbientLight = 2,
+    LuminanceSensitivity = 3
+};
 
 class DeferredLighting : public RenderPass
 {
@@ -63,4 +72,6 @@ private:
     float mAmbientLight = 0.1f;
     float mLinearFalloff = 0.7f;
     float mQuadraticFalloff = 1.8f;
+
+    AOBlendMode mAOBlendMode = AOBlendMode::None;
 };

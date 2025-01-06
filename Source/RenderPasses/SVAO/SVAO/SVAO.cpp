@@ -62,7 +62,9 @@ RenderPassReflection SVAO::reflect(const CompileData& compileData)
     reflector.addInput(kNormalViewIn, "Normal texture in view space (Uncompressed)");
     reflector.addInput(kAOMaskIn, "AOMask from first VAO pass");
 
-    reflector.addInputOutput(kAOInOut, "Ambient occlusion UAV").bindFlags(ResourceBindFlags::AllColorViews);
+    reflector.addInputOutput(kAOInOut, "Ambient occlusion UAV")
+        .format(ResourceFormat::R8Unorm)
+        .bindFlags(ResourceBindFlags::AllColorViews);
 
     return reflector;
 }

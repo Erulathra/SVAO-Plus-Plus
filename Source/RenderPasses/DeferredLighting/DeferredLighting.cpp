@@ -36,14 +36,16 @@ namespace
         // clang-format off
         { "posW","gPosW","Position in world space", false /* optional */, ResourceFormat::RGBA32Float },
         { "normW","gNormW","Shading normal in world space",false /* optional */, ResourceFormat::RGBA32Float },
-        { "diffuseOpacity","gDiffOpacity","Diffuse reflection albedo and opacity",true /* optional */, ResourceFormat::RGBA32Float },
-        { "specRough","gSpecRough","Specular reflectance and roughness",true /* optional */, ResourceFormat::RGBA32Float },
+        { "diffuseOpacity","gDiffOpacity","Diffuse reflection albedo and opacity",false /* optional */, ResourceFormat::RGBA32Float },
+        { "specRough","gSpecRough","Specular reflectance and roughness",false /* optional */, ResourceFormat::RGBA32Float },
+        { "ambientOcclusion","gAmbientOcclusion","Ambient occlusion",true /* optional */, ResourceFormat::R8Unorm },
         // clang-format on
     };
 
     const std::string kColorOut = "kColorOut";
 
     const std::string kAmbientLight = "ambientLight";
+    const std::string kAOApplyMode = "aoBlendMode";
 
     const std::string kShaderPath = "RenderPasses/DeferredLighting/DeferredLighting.slang";
 }
@@ -61,13 +63,15 @@ DeferredLighting::DeferredLighting(ref<Device> pDevice, const Properties& props)
     for (const auto& [key, value] : props)
     {
         if (key == kAmbientLight) mAmbientLight = value;
+        else if (key == kAOApplyMode) mAOBlendMode = static_cast<AOBlendMode>(props.get<uint32_t>(kAOApplyMode));
     }
 }
 
 Properties DeferredLighting::getProperties() const
 {
     Properties properties;
-    properties[kAmbientLight];
+    properties[kAmbientLight] = mAmbientLight;
+    properties[kAmbientLight] = static_cast<uint32_t>(mAOBlendMode);
     return properties;
 }
 
@@ -88,6 +92,7 @@ void DeferredLighting::compile(RenderContext* pRenderContext, const CompileData&
     RenderPass::compile(pRenderContext, compileData);
 
     DefineList defines = mpScene->getSceneDefines();
+    defines.add("AO_MODE", std::to_string(static_cast<uint32_t>(mAOBlendMode)));
 
     mpPass = FullScreenPass::create(pRenderContext->getDevice(), kShaderPath, defines);
 }
@@ -104,7 +109,10 @@ void DeferredLighting::execute(RenderContext* pRenderContext, const RenderData& 
 
     for (const ChannelDesc& channel : kChannels)
     {
-        rootVar[channel.texname] = renderData.getTexture(channel.name);
+        if (const ref<Texture> texture = renderData.getTexture(channel.name))
+        {
+            rootVar[channel.texname] = texture;
+        }
     }
 
     ShaderVar PerFrameCB = rootVar["PerFrameCB"];
@@ -120,9 +128,25 @@ void DeferredLighting::execute(RenderContext* pRenderContext, const RenderData& 
 
 void DeferredLighting::renderUI(Gui::Widgets& widget)
 {
+    bool bRequiresRecompile = false;
+
     widget.var("Ambient Light", mAmbientLight, 0.f, 1.f);
     widget.var("Linear Falloff", mLinearFalloff, 0.0014f, 0.7f, 0.0001f);
     widget.var("Quadratic Falloff", mQuadraticFalloff, 0.000007f, 1.8f, 0.0001f);
+
+    const static Gui::DropdownList kAOApplyMode = {
+        {static_cast<uint32_t>(AOBlendMode::None), "None"},
+        {static_cast<uint32_t>(AOBlendMode::Naive), "Naive"},
+        {static_cast<uint32_t>(AOBlendMode::AmbientLight), "Ambient Light"},
+        {static_cast<uint32_t>(AOBlendMode::LuminanceSensitivity), "Luminance Sensitivity"},
+    };
+
+    bRequiresRecompile |= widget.dropdown("AO blend mode", kAOApplyMode, reinterpret_cast<uint32_t&>(mAOBlendMode));
+
+    if (bRequiresRecompile)
+    {
+        requestRecompile();
+    }
 }
 
 void DeferredLighting::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)

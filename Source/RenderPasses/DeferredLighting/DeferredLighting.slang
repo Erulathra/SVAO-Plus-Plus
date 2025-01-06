@@ -12,6 +12,16 @@ Texture2D<float4> gPosW;
 Texture2D<float4> gNormW;
 Texture2D<float4> gDiffOpacity;
 Texture2D<float4> gSpecRough;
+Texture2D<unorm float> gAmbientOcclusion;
+
+#define AO_MODE_NONE 0
+#define AO_MODE_NAIVE 1
+#define AO_MODE_AMBIENT_LIGHT 2
+#define AO_MODE_LUMINANCE_SENSITIVITY 3
+
+#ifndef AO_MODE
+#define AO_MODE 0
+#endif // AO_MODE
 
 struct GBufferData
 {
@@ -88,9 +98,17 @@ float3 GGX(LightData light, float3 viewDir, GBufferData gBuffer)
     return result;
 }
 
-float3 blinPhong(LightData light, float3 viewDir, GBufferData gBuffer)
+float calculateLuminanceSensitivity(const float3 color)
 {
-    return (gBuffer.diff + gBuffer.specular) * calculateLightFalloff(light, gBuffer.posW);
+    // https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
+    const float luminance = (0.2126f * color.r + 0.7152f * color.g + 0.0722f * color.b);
+    const float sigma = 2.5f;
+    const float treshold = 0.5f;
+    const float width = 0.3f;
+
+    const float fraction = clamp(luminance - treshold + width, 0.f, 1.f) / 2.f * width;
+
+    return pow(1.f - fraction, sigma);
 }
 
 float4 main(float2 uv : TEXCOORD, float4 svPos : SV_POSITION) : SV_TARGET
@@ -107,9 +125,19 @@ float4 main(float2 uv : TEXCOORD, float4 svPos : SV_POSITION) : SV_TARGET
     // We doesn't support reflections so we need to clamp roughness to small value
     gBuffer.roughness = max(specRough.a, 0.04f);
 
+#if AO_MODE != AO_MODE_NONE
+    float ao = gAmbientOcclusion.Load(int3(svPos.xy, 0));
+#endif // AO_MODE != AO_MODE_NONE
+
     const float3 viewDir = normalize(gScene.camera.getPosition() - gBuffer.posW);
 
-    float3 color = (gBuffer.diff + gBuffer.specular) * ambientLight;
+    float3 ambientLight = (gBuffer.diff + gBuffer.specular) * ambientLight;
+
+#if AO_MODE == AO_MODE_AMBIENT_LIGHT
+    ambientLight *= ao;
+#endif // AO_MODE == AO_MODE_AMBIENT_LIGHT
+
+    float3 color = ambientLight;
 
     for (int i = 0; i < gScene.getLightCount(); i++)
     {
@@ -120,6 +148,12 @@ float4 main(float2 uv : TEXCOORD, float4 svPos : SV_POSITION) : SV_TARGET
 
         color += GGX(light, viewDir, gBuffer);
     }
+
+#if AO_MODE == AO_MODE_NAIVE
+    color *= ao;
+#elif AO_MODE == AO_MODE_LUMINANCE_SENSITIVITY
+    color *= 1.f - (1.f - ao) * calculateLuminanceSensitivity(color);
+#endif // AO_MODE
 
     return float4(color, 1.f);
 }

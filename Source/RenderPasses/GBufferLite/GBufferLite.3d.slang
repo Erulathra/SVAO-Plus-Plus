@@ -39,6 +39,7 @@ struct GBufferPSOut
     float4 normW : SV_TARGET1;
     float4 diffuseOpacity : SV_TARGET2;
     float4 specRough : SV_TARGET3;
+    float linearDepth : SV_TARGET4;
 };
 
 #define is_valid(name) (is_valid_##name != 0)
@@ -75,6 +76,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID, float3 bary
     psOut.normW = gbuf.normW;
     psOut.diffuseOpacity = gbuf.diffuseOpacity;
     psOut.specRough = gbuf.specRough;
+    psOut.linearDepth = -mul(gScene.camera.data.viewMat, gbuf.posW).z;
 
     return psOut;
 }

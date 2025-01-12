@@ -17,7 +17,20 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     if(mask == 0)
         return;
 
-    float visibility = calcAO2(svPos, mask);
+    uint numSamples = NUM_DIRECTIONS;
+
+#if ADAPTIVE_SAMPLING
+        for (uint i = 0; i < 3; i++)
+        {
+            if ((-data.posV.z) < gData.adaptiveSamplingDistances[i])
+            {
+                numSamples = 1 << (3 - i);
+                break;
+            }
+        }
+#endif
+
+    float visibility = calcAO2(svPos, mask, numSamples);
     visibility += float(gAOInOut[svPos]);
     visibility = BasicAOData.finalize(visibility);
     gAOInOut[svPos] = visibility;

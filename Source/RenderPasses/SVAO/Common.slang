@@ -37,6 +37,10 @@ import Utils.Math.PackedFormats;
 #define USE_RAY_INTERVAL 0
 #endif //USE_RAY_INTERVAL
 
+#ifndef ADAPTIVE_SAMPLING
+#define ADAPTIVE_SAMPLING 0
+#endif //USE_RAY_INTERVAL
+
 // area where the halo effect remains constant at 0.0
 #define CONST_RADIUS ((1.0 + gData.thickness) * data.radius - sphereStart)
 #define HALO_RADIUS sphereStart
@@ -334,11 +338,15 @@ struct SampleAOData
 
     float screenSpaceRadius;
 
+    uint numSamples;
+
     // returns false if the sample is invalid (below hemisphere)
-    [mutating] bool Init(float2 texC, BasicAOData data, uint i)
+    [mutating] bool Init(float2 texC, BasicAOData data, uint i, uint inNumSamples)
     {
+        numSamples = inNumSamples;
+
         // random angle on view space disc
-        float alpha = (float(i) / NUM_DIRECTIONS) * M_2PI;
+        float alpha = (float(i) / numSamples) * M_2PI;
         radius = sampleRadius[i] * data.radius; // radius on sampling unit sphere * world space radius
         float2 dir = radius * float2(sin(alpha), cos(alpha)); // world space direction
 
@@ -432,7 +440,7 @@ struct RayData // cannot be compressed to half floats => no diff in rendering ti
     float tSphereStart;
 };
 
-float calcAO2(uint2 svPos, uint mask)
+float calcAO2(uint2 svPos, uint mask, uint numSamples)
 {
     float2 texC = (float2(svPos) + 0.5) * gData.invResolution;
 
@@ -444,7 +452,7 @@ float calcAO2(uint2 svPos, uint mask)
     uint i = 0;
 
     [unroll]
-    for (uint j = 0; j < NUM_DIRECTIONS; j++)
+    for (uint j = 0; j < numSamples; j++)
     {
         if (mask == 0u)
         {
@@ -453,7 +461,7 @@ float calcAO2(uint2 svPos, uint mask)
 
         // modify loop to only go through the set bits in mask
         [unroll]
-        for (uint k = 0; k < NUM_DIRECTIONS && k < NUM_DIRECTIONS - j && (mask & 1u) == 0u; k++) // first condition is for unrolling, second is for better unrolling
+        for (uint k = 0; k < numSamples && k < numSamples - j && (mask & 1u) == 0u; k++) // first condition is for unrolling, second is for better unrolling
         {
             // shift mask an increase i
             mask = mask >> 1;
@@ -461,7 +469,7 @@ float calcAO2(uint2 svPos, uint mask)
         }
 
         SampleAOData s;
-        s.Init(texC, data, i);
+        s.Init(texC, data, i, numSamples);
 
         // subtract old visibility from raster (will be replaced with new visibility)
         s.evalPrimaryVisibility(data);
@@ -506,7 +514,7 @@ float calcAO2(uint2 svPos, uint mask)
         ++i;
     }
 
-    visibility *= 2.0 / float(NUM_DIRECTIONS);
+    visibility *= 2.0 / float(numSamples);
     return visibility;
 }
 

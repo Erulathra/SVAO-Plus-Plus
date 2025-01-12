@@ -64,6 +64,7 @@ protected:
     VAOData mVaoData;
 
     bool mEnableGuardBand = true;
+    bool mEnableAdaptiveSampling = false;
 
     int32_t mStochMapGuardBand = 512;
     uint mSDMapResolutionDivisor = 4;

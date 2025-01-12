@@ -45,11 +45,26 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     else
     {
         float visibility = 0.0;
+
+        uint numSamples = NUM_DIRECTIONS;
+#if ADAPTIVE_SAMPLING
+        for (uint i = 0; i < 3; i++)
+        {
+            if ((-data.posV.z) < gData.adaptiveSamplingDistances[i])
+            {
+                numSamples = 1 << (3 - i);
+                break;
+            }
+        }
+
+        for (uint i = 0; i < numSamples; i++)
+#else
         [unroll]
-        for (uint i = 0; i < NUM_DIRECTIONS; i++)
+        for (uint i = 0; i < numSamples; i++)
+#endif // !ADAPTIVE_SAMPLING
         {
             SampleAOData s;
-            if (!s.Init(texC, data, i))
+            if (!s.Init(texC, data, i, numSamples))
                 continue;
 
             if (isSamePixel(texC, s.rasterSamplePosUV))
@@ -91,7 +106,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
             }
         }
 
-        output.ao1 *= 2.0 / float(NUM_DIRECTIONS);
+        output.ao1 *= 2.0 / float(numSamples);
 
 #if SECONDARY_DEPTH_MODE == DEPTH_MODE_SINGLE
         output.ao1 = data.finalize(output.ao1); // there is no second pass

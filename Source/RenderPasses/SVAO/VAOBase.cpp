@@ -55,6 +55,7 @@ DefineList VAOBase::GetCommonDefines(const CompileData& compileData)
     auto rayConeSpread = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(compileData.defaultTexDims.y);
     defines.add("RAY_CONE_SPREAD", std::to_string(rayConeSpread));
     defines.add("NUM_DIRECTIONS", std::to_string(mSampleCount));
+    defines.add("ADAPTIVE_SAMPLING", mEnableAdaptiveSampling ? "1" : "0");
 
     return defines;
 }
@@ -62,6 +63,7 @@ DefineList VAOBase::GetCommonDefines(const CompileData& compileData)
 void VAOBase::SetCommonVars(ShaderVar& vars, Scene* pScene)
 {
     vars["StaticCB"].setBlob(mVaoData);
+    vars["StaticCB"]["gData"]["adaptiveSamplingDistances"] = mVaoData.adaptiveSamplingDistances;
     vars["gNoiseSampler"] = mpPointSampler;
     vars["gTextureSampler"] = mpLinearSampler;
     vars["gNoiseTex"] = mpDitherTexture;
@@ -108,6 +110,7 @@ void VAOBase::renderUI(Gui::Widgets& widget)
     {
         group.var("Radius", mVaoData.radius, 0.f);
         group.var("Exponent", mVaoData.exponent, 1.f);
+        group.var("Adaptive sampling distances", mVaoData.adaptiveSamplingDistances);
 
         const static Gui::DropdownList kVaoSampleCount = {{8, "8"}, {16, "16"}, {32, "32"}};
 
@@ -116,6 +119,7 @@ void VAOBase::renderUI(Gui::Widgets& widget)
 
     requiresRecompile |= widget.dropdown("SDMap resolution divisor", kResolutionDivisorDropdownList, mSDMapResolutionDivisor);
     requiresRecompile |= widget.checkbox("Enable Guard Band", mEnableGuardBand);
+    requiresRecompile |= widget.checkbox("Enable Adaptive Sampling", mEnableAdaptiveSampling);
 
     if (requiresRecompile)
     {

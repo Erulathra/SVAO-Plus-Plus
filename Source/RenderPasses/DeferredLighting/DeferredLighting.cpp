@@ -71,7 +71,7 @@ Properties DeferredLighting::getProperties() const
 {
     Properties properties;
     properties[kAmbientLight] = mAmbientLight;
-    properties[kAmbientLight] = static_cast<uint32_t>(mAOBlendMode);
+    properties[kAOApplyMode] = static_cast<uint32_t>(mAOBlendMode);
     return properties;
 }
 

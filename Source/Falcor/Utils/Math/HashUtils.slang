@@ -80,6 +80,9 @@ uint2 blockCipherTEA(uint v0, uint v1, uint iterations = 16)
 #define HASH_TYPE 1
 #endif
 
+#define UINT_MAX 4294967296
+#define UINT_MAX_INV 1.f / float(UINT_MAX)
+
 uint2 pcgHash(uint2 v)
 {
     v = v * 1664525u + 1013904223u;
@@ -103,7 +106,7 @@ float hash(float2 v)
 #if HASH_TYPE == HASH_TYPE_PCG
     uint2 seedAsUint = uint2(asuint(v.x), asuint(v.y));
     uint2 result = pcgHash(seedAsUint);
-    return frac(asfloat(result.x) + asfloat(result.y));
+    return frac(result.x * UINT_MAX_INV + result.y * UINT_MAX_INV);
 #else // Demoscene hash
     return frac(1.0e4 * sin(17.0 * v.x + 0.1 * v.y) * (0.1 + abs(sin(13.0 * v.y + v.x))));
 #endif

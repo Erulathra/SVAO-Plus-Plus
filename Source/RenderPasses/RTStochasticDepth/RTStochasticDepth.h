@@ -59,4 +59,5 @@ private:
 
     uint32_t mResolutionDivisor = 4;
     bool mEnableGuardBand = true;
+    uint32_t mHashAlgorithm = 1;
 };

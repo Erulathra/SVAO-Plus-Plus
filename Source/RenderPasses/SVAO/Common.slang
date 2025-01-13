@@ -21,6 +21,10 @@ import Utils.Math.PackedFormats;
 #define NUM_DIRECTIONS 8
 #endif // NUM_DIRECTIONS
 
+#ifndef LOG2_NUM_DIRECTIONS
+#define LOG2_NUM_DIRECTIONS 3
+#endif // NUM_DIRECTIONS
+
 #ifndef MSAA_SAMPLES
 #define MSAA_SAMPLES 4
 #endif // MSAA_SAMPLES
@@ -71,16 +75,29 @@ cbuffer PerFrameCB
 SamplerState gNoiseSampler;
 SamplerState gTextureSampler;
 
-
 Texture2D<float> gLinearDepthIn;
 Texture2D<float4> gLinearSDIn;
 
 Texture2D<uint> gNormalIn;
 Texture2D<float> gNoiseTex;
 
+uint GetNumSamples(float linearDepth)
+{
+#if ADAPTIVE_SAMPLING
+    for (uint i = 0; i < LOG2_NUM_DIRECTIONS; i++)
+    {
+        if (linearDepth < gData.adaptiveSamplingDistances[i])
+        {
+            return 1 << (LOG2_NUM_DIRECTIONS - i);
+        }
+    }
+#endif
+
+    return NUM_DIRECTIONS;
+}
+
 float3 loadNormal(float2 texC)
 {
-    // return gNormalIn[texC * gData.resolution];
     uint packedNormal = gNormalIn[texC * gData.resolution];
     return decodeNormal2x8(packedNormal);
 }
@@ -440,18 +457,22 @@ struct RayData // cannot be compressed to half floats => no diff in rendering ti
     float tSphereStart;
 };
 
-float calcAO2(uint2 svPos, uint mask, uint numSamples)
+float calcAO2(uint2 svPos, uint mask)
 {
     float2 texC = (float2(svPos) + 0.5) * gData.invResolution;
 
     BasicAOData data;
     data.Init(texC);
 
+    const uint numSamples = GetNumSamples(-data.posV.z);
+
     float visibility = 0.0;
 
     uint i = 0;
 
+#if !ADAPTIVE_SAMPLING
     [unroll]
+#endif
     for (uint j = 0; j < numSamples; j++)
     {
         if (mask == 0u)
@@ -460,7 +481,9 @@ float calcAO2(uint2 svPos, uint mask, uint numSamples)
         }
 
         // modify loop to only go through the set bits in mask
+#if !ADAPTIVE_SAMPLING
         [unroll]
+#endif
         for (uint k = 0; k < numSamples && k < numSamples - j && (mask & 1u) == 0u; k++) // first condition is for unrolling, second is for better unrolling
         {
             // shift mask an increase i

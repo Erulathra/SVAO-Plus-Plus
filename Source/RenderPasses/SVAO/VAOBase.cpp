@@ -55,6 +55,7 @@ DefineList VAOBase::GetCommonDefines(const CompileData& compileData)
     auto rayConeSpread = mpScene->getCamera()->computeScreenSpacePixelSpreadAngle(compileData.defaultTexDims.y);
     defines.add("RAY_CONE_SPREAD", std::to_string(rayConeSpread));
     defines.add("NUM_DIRECTIONS", std::to_string(mSampleCount));
+    defines.add("LOG2_NUM_DIRECTIONS", std::to_string(static_cast<uint>(log2(mSampleCount))));
     defines.add("ADAPTIVE_SAMPLING", mEnableAdaptiveSampling ? "1" : "0");
 
     return defines;

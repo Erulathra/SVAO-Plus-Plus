@@ -46,22 +46,12 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     {
         float visibility = 0.0;
 
-        uint numSamples = NUM_DIRECTIONS;
-#if ADAPTIVE_SAMPLING
-        for (uint i = 0; i < 3; i++)
-        {
-            if ((-data.posV.z) < gData.adaptiveSamplingDistances[i])
-            {
-                numSamples = 1 << (3 - i);
-                break;
-            }
-        }
+        const uint numSamples = GetNumSamples(-data.posV.z);
 
-        for (uint i = 0; i < numSamples; i++)
-#else
+#if !ADAPTIVE_SAMPLING
         [unroll]
+#endif
         for (uint i = 0; i < numSamples; i++)
-#endif // !ADAPTIVE_SAMPLING
         {
             SampleAOData s;
             if (!s.Init(texC, data, i, numSamples))

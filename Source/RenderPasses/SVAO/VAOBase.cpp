@@ -2,6 +2,7 @@
 
 #include "SVAO.h"
 #include "VAO.h"
+#include "VAOPrepass.h"
 #include "Utils/Math/SDMath.h"
 
 namespace
@@ -20,6 +21,7 @@ namespace
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
 {
+    registry.registerClass<RenderPass, VAOPrepass>();
     registry.registerClass<RenderPass, VAO>();
     registry.registerClass<RenderPass, SVAO>();
 }
@@ -80,7 +82,9 @@ void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileD
     RenderPass::compile(pRenderContext, compileData);
 
     mVaoData.resolution = float2(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
+    mVaoData.aoResolution = mVaoData.resolution;
     mVaoData.invResolution = float2(1.0f) / mVaoData.resolution;
+    mVaoData.aoInvResolution = mVaoData.invResolution;
     mVaoData.sdGuard = mEnableGuardBand ? getExtraGuardBand() : 0;
     mVaoData.lowResolution = getStochMapSize(compileData.defaultTexDims);
     mVaoData.noiseScale = mVaoData.resolution / 4.0f; // noise texture is 4x4 resolution

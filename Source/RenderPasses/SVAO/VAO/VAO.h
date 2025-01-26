@@ -33,7 +33,7 @@
 
 using namespace Falcor;
 
-class VAO final : public VAOBase
+class VAO : public VAOBase
 {
 public:
     FALCOR_PLUGIN_CLASS(VAO, "VAO", "Volumetric Ambient Occasion");
@@ -55,5 +55,7 @@ private:
 
     bool mSVAOInputMode = false;
     bool mUseRayInterval = false;
+    bool mUsePrepass = false;
+    bool mDebugPrepass = false;
 };
 

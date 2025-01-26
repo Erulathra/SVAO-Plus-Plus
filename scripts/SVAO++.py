@@ -1,9 +1,10 @@
+from pathlib import WindowsPath, PosixPath
 from falcor import *
 
 def render_graph_DefaultRenderGraph():
     g = RenderGraph('DefaultRenderGraph')
-    g.create_pass('VAO', 'VAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True, 'SVAOInputMode': True, 'useRayInterval': True})
-    g.create_pass('RTStochasticDepth', 'RTStochasticDepth', {'resolutionDivisor': 4, 'enableGuardBand': True})
+    g.create_pass('VAO', 'VAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True, 'SVAOInputMode': True, 'useRayInterval': True, 'usePrepass': False})
+    g.create_pass('RTStochasticDepth', 'RTStochasticDepth', {'resolutionDivisor': 4, 'enableGuardBand': True, 'hashAlgorithm': 1})
     g.create_pass('LinearizeDepth', 'LinearizeDepth', {})
     g.create_pass('NormalsToViewSpace', 'NormalsToViewSpace', {})
     g.create_pass('SVAO', 'SVAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True})
@@ -11,6 +12,7 @@ def render_graph_DefaultRenderGraph():
     g.create_pass('DeferredLighting', 'DeferredLighting', {'ambientLight': 0.0, 'aoBlendMode': 3})
     g.create_pass('GBufferLite', 'GBufferLite', {})
     g.create_pass('DepthBranchPass', 'DepthBranchPass', {'pickFirst': True})
+    g.create_pass('VAOPrepass', 'VAOPrepass', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True})
     g.add_edge('NormalsToViewSpace.normalsViewOut', 'VAO.normalViewIn')
     g.add_edge('RTStochasticDepth.stochasticDepth', 'SVAO.stochDepthIn')
     g.add_edge('VAO.aoOut', 'SVAO.aoInOut')
@@ -34,8 +36,12 @@ def render_graph_DefaultRenderGraph():
     g.add_edge('DepthBranchPass.result', 'RTStochasticDepth.linearDepthIn')
     g.add_edge('DepthBranchPass.result', 'SVAO.linearDepthIn')
     g.add_edge('DepthBranchPass.result', 'BilateralBlur.linearDepthIn')
+    g.add_edge('DepthBranchPass.result', 'VAOPrepass.linearDepthIn')
+    g.add_edge('NormalsToViewSpace.normalsViewOut', 'VAOPrepass.normalViewIn')
+    g.add_edge('VAOPrepass.aoMaskOut', 'VAO.prepassMask')
     g.mark_output('DeferredLighting.kColorOut')
     g.mark_output('BilateralBlur.colorOut')
+    g.mark_output('VAOPrepass.aoMaskOut')
     return g
 
 DefaultRenderGraph = render_graph_DefaultRenderGraph()

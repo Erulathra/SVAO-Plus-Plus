@@ -1,5 +1,5 @@
 /***************************************************************************
- # Copyright (c) 2015-21, NVIDIA CORPORATION. All rights reserved.
+ # Copyright (c) 2015-23, NVIDIA CORPORATION. All rights reserved.
  #
  # Redistribution and use in source and binary forms, with or without
  # modification, are permitted provided that the following conditions
@@ -26,26 +26,33 @@
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  **************************************************************************/
 #pragma once
-#include "Utils/HostDeviceShared.slangh"
 
-BEGIN_NAMESPACE_FALCOR
+#include "Falcor.h"
+#include "VAOBase.h"
+#include "RenderGraph/RenderPass.h"
 
-struct VAOData
+using namespace Falcor;
+
+class VAOPrepass  : public VAOBase
 {
-    float2 noiseScale = float2(1, 1);
-    float2 resolution; // resolution of primary depth buffer
-    float2 aoResolution; // resolution of result
-    float2 aoInvResolution; // resolution of resutl
-    float2 lowResolution; // low resolution for the SD-map (without guard band). This will be same as resolution, or 1/2, or 1/4 etc.
-    float2 invResolution; // 1 / resolution
-    float radius = 0.5f;
-    float exponent = 2.0f;
-    float thickness = 0.0f;
-    int sdGuard = 0; // extra guard band for the SD-map (only nonzero if active and stochastic depth map is used)
-    float ssRadiusCutoff = 6.0f; // radius in pixels where the ray tracing result is completely faded and only rasterization remains
-    float ssMaxRadius = 512.0f;  // max screen space radius to gather samples from (setting this to a smaller number can improve performance due to increased cache hits)
+public:
+    FALCOR_PLUGIN_CLASS(VAOPrepass, "VAOPrepass", "Volumetric Ambient Occasion Prepass");
 
-    float3 adaptiveSamplingDistances = { 10.f, 16.f, 25.f }; // Distances of adaptive sampling
+    VAOPrepass(ref<Device> pDevice, const Properties& props);
+    static ref<VAOPrepass> create(ref<Device> pDevice, const Properties& props);
+
+    virtual Properties getProperties() const override;
+    virtual RenderPassReflection reflect(const CompileData& compileData) override;
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
+    virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
+    virtual void renderUI(Gui::Widgets& widget) override;
+
+private:
+    void ApplyProperties(const Properties& props);
+
+private:
+    ref<ComputePass> mpComputePass;
+
+    float mAOThreshold = 0.9f;
 };
 
-END_NAMESPACE_FALCOR

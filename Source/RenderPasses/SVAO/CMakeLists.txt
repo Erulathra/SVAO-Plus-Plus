@@ -6,7 +6,11 @@ target_sources(SVAO PRIVATE
 
     VAO/VAO.cpp
     VAO/VAO.h
-    VAO/SVAORaster.ps.slang
+        VAO/VAO.ps.slang
+
+    VAOPRepass/VAOPrepass.cpp
+    VAOPRepass/VAOPrepass.h
+    VAOPRepass/VAOPrepass.ps.slang
 
     SVAO/SVAO.cpp
     SVAO/SVAO.h
@@ -19,6 +23,7 @@ target_sources(SVAO PRIVATE
 target_include_directories(SVAO PRIVATE
     SVAO
     VAO
+    VAOPrepass
     .
 )
 

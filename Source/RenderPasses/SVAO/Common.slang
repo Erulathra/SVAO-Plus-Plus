@@ -8,6 +8,8 @@ import Utils.Math.PackedFormats;
 
 #include "Utils/Math/MathConstants.slangh"
 
+#define ERULATHRA_MODIFICATIONS 1
+
 // single depth texture
 #define DEPTH_MODE_SINGLE 0
 // single or dual depth texture + stochastic depth texture
@@ -59,9 +61,18 @@ static const float sampleRadius[16] = {0.949098221604059, 0.5865639019441775, 0.
 static const float sampleRadius[32] = {0.9682458365518543, 0.5974803093982587, 0.7660169295429302, 0.4038472576817624, 0.8541535023444914, 0.5068159098187986, 0.6823727109604635, 0.2726076670970059, 0.904018191941786, 0.5531894754180758, 0.7240656647095169, 0.34372202910162664, 0.8089818132350507, 0.45747336127867605, 0.640354849019649, 0.17748061996818404, 0.9327350969376332, 0.5755500192397054, 0.7449678114312224, 0.37479566486456295, 0.8311856199411515, 0.4825843210309559, 0.6614378277661477, 0.22975243551455923, 0.878233108646881, 0.5303115209931901, 0.7032256306171377, 0.3099952198410562, 0.7873133907642258, 0.43130429537268, 0.6190581352335289, 0.10219580968897692};
 #endif
 
+#ifndef USE_PREPASS
+#define USE_PREPASS 1
+#endif // ifndef USE_PREPASS
+
 cbuffer StaticCB
 {
     VAOData gData;
+#if USE_PREPASS
+    float2 gPrepassResolution; 
+    float2 gPrepassInvResolution;
+#endif // USE_PREPASS
+    float gAOThreshold;
 }
 
 cbuffer PerFrameCB
@@ -126,7 +137,7 @@ float2 getSnappedUV(float2 uv)
 
 bool isSamePixel(float2 uv1, float2 uv2)
 {
-    return all(abs(uv1 - uv2) < gData.invResolution * 0.9);
+    return all(abs(uv1 - uv2) < gData.aoInvResolution * 0.9);
 }
 
 // uv: uv coordinates [0, 1]
@@ -146,13 +157,6 @@ float2 ViewSpaceToUV(float3 posV)
     const float2 imageScale = 0.5 * float2(gCamera.data.frameWidth / gCamera.data.focalLength, gCamera.data.frameHeight / gCamera.data.focalLength);
     float2 ndc = posV.xy / (imageScale * posV.z);
     return ndc * float2(-0.5, 0.5) + 0.5; // since posV.z is negative, the sign order is inversed
-}
-
-int2 UVToPixel(float2 uv)
-{
-    float width, height;
-    gLinearDepthIn.GetDimensions(width, height);
-    return int2(floor(uv * float2(width, height)));
 }
 
 // converts from screen uv coordinates to pixel coordinates of stochastic depth map.
@@ -195,61 +199,6 @@ float calcVisibility(float objectSpaceZ, float sphereStart, float sphereEnd, flo
          + calcHaloVisibility(objectSpaceZ, sphereStart, sphereEnd, pdf, radius);
 }
 
-float2 calcGatherUV(float2 uv, Texture2D<float> tex)
-{
-    float2 resolution;
-    tex.GetDimensions(resolution.x, resolution.y);
-
-    return (floor(uv * resolution - 0.5) + 1.0) / resolution;
-}
-
-float4 getTexelWeights(float2 uv, Texture2D<float> tex)
-{
-    float2 resolution;
-    tex.GetDimensions(resolution.x, resolution.y);
-
-    // calculate bilinear interpolation weights from uv coordinate
-    float2 f = frac(uv * resolution - 0.5);
-    // (-,+),(+,+),(+,-),(-,-)
-    float4 w = float4((1.0 - f.x) * f.y, f.x * f.y, f.x * (1.0 - f.y), (1.0 - f.x) * (1.0 - f.y));
-    return w;
-}
-
-float4 getTexelPointWeight(float4 w)
-{
-    int maxIdx = 0;
-    float maxVal = w[0];
-
-    [unroll]
-    for (int i = 1; i < 4; ++i)
-    {
-        if (w[i] > maxVal)
-        {
-            maxIdx = i;
-            maxVal = w[i];
-        }
-    }
-    float4 res = 0.0;
-
-    [unroll]
-    for (int i = 1; i < 4; ++i)
-    {
-        if (i == maxIdx)
-        {
-            res[i] = 1.0;
-        }
-    }
-
-    return res;
-}
-
-
-
-float3 RayToViewSpace(RayDesc ray, float t)
-{
-    return mul(gCamera.data.viewMat, float4(ray.Origin + ray.Direction * t, 1.0f)).xyz;
-}
-
 // z: positive linear depth in view space
 // r: radius in view/world space
 float2 ViewSpaceRadiusToUVRadius(float z, float r)
@@ -262,7 +211,7 @@ float GetAORadiusInPixels(float ViewDepth)
     // convert radius to screen pixels
     float2 radiusUV = ViewSpaceRadiusToUVRadius(ViewDepth, gData.radius);
     // convert uv radius to pixel radius
-    return lerp(radiusUV.x * gData.resolution.x, radiusUV.y * gData.resolution.y, 0.5); // take mean between width and height radii TODO  test
+    return lerp(radiusUV.x * gData.aoResolution.x, radiusUV.y * gData.aoResolution.y, 0.5); // take mean between width and height radii TODO  test
 }
 
 float GetMaxAORadius(float2 texC)
@@ -391,7 +340,7 @@ struct SampleAOData
         samplePosUV = ViewSpaceToUV(initialSamplePosV);
         visibility = 0.0;
         objectSpaceZ = 0.0;
-        screenSpaceRadius = length(float2((texC - samplePosUV) * gData.resolution));
+        screenSpaceRadius = length(float2((texC - samplePosUV) * gData.aoResolution));
         // screenSpaceRadius < 1 handled in first ao pass (isSamplePixel)
 
         float2 screenUv = getScreenClampedUV(texC, samplePosUV); // clip to screen border
@@ -449,17 +398,9 @@ struct SampleAOData
     }
 };
 
-struct RayData // cannot be compressed to half floats => no diff in rendering time + insufficient visual quality
-{
-    float tLastFrontFaceHalo; // ray min
-    float tFirstFrontFaceInside; // ray max
-    float tConstRadiusStart;
-    float tSphereStart;
-};
-
 float calcAO2(uint2 svPos, uint mask)
 {
-    float2 texC = (float2(svPos) + 0.5) * gData.invResolution;
+    float2 texC = (float2(svPos) + 0.5) * gData.aoInvResolution;
 
     BasicAOData data;
     data.Init(texC);
@@ -539,49 +480,4 @@ float calcAO2(uint2 svPos, uint mask)
 
     visibility *= 2.0 / float(numSamples);
     return visibility;
-}
-
-#define AO_HIT_IGNORE 0
-#define AO_HIT_ACCEPT 1
-#define AO_HIT_ACCEPT_AND_END 2
-
-ExplicitRayConesLodTextureSampler computeLod(VertexData v, float3 rayDir, float t)
-{
-    RayCone rc = RayCone(0.0, RAY_CONE_SPREAD);
-    rc = rc.propagateDistance(t);
-    float lambda = rc.computeLOD(v.coneTexLODValue, rayDir, v.faceNormalW);
-    return ExplicitRayConesLodTextureSampler(lambda);
-}
-
-
-// returns any of the above A0_HIT defines
-uint aoAnyHit(inout RayData rayData, float t, const TriangleHit hit, bool frontFace, float3 rayDir)
-{
-    const uint materialID = gScene.getMaterialID(hit.instanceID);
-    const MaterialHeader header = gScene.materials.materialData[materialID].header;
-
-    bool isAlphaTested = header.getAlphaMode() == AlphaMode::Mask;
-
-    frontFace = frontFace || header.isDoubleSided() || isAlphaTested;
-    if (!frontFace)
-    {
-        return AO_HIT_IGNORE; // this is just for rasterizer compability
-    }
-
-    if (t <= rayData.tSphereStart)
-    {
-        rayData.tLastFrontFaceHalo = max(rayData.tLastFrontFaceHalo, t);
-        if (t >= rayData.tConstRadiusStart)
-        {
-            return AO_HIT_ACCEPT_AND_END; // we can stop the query, because this will set the visibility to zero
-        }
-    }
-    else // inside sphere
-    {
-        rayData.tFirstFrontFaceInside = min(rayData.tFirstFrontFaceInside, t);
-        return AO_HIT_ACCEPT; // since we save the min, we can commit TMax here
-    }
-
-    return AO_HIT_IGNORE;
-
 }

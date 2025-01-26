@@ -80,7 +80,7 @@ uint2 blockCipherTEA(uint v0, uint v1, uint iterations = 16)
 #define HASH_TYPE 1
 #endif
 
-#define UINT_MAX 4294967296
+#define UINT_MAX 4294967295
 #define UINT_MAX_INV 1.f / float(UINT_MAX)
 
 uint2 pcgHash(uint2 v)

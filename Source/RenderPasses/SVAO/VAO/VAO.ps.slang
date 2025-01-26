@@ -20,11 +20,48 @@ RWTexture2D<uint> gRayMaxOut;
 RWTexture2D<unorm float> gAOOut;
 RWTexture2D<uint> gStencil;
 
+#if USE_PREPASS
+Texture2D<float> gPrepassMask;
+#endif // USE_PREPASS
+
+#ifndef DEBUG_PREPASS
+#define DEBUG_PREPASS 0
+#endif // DEBUG_PREPASS
+
 void writeOutput(uint2 pixel, PSOut output)
 {
     gAOOut[pixel] = output.ao1;
     STENCIL(gStencil[pixel] = output.stencil);
 }
+
+#if USE_PREPASS
+float samplePrepassGreedy(float2 uv)
+{
+    const int2 pixelIndex = floor(gPrepassResolution * uv);
+
+    // sample in corner of the pixel, which result in linear interpolation of 4 pixels
+    const float2 linearUVSample = (float2(pixelIndex) + float2(1.)) * gPrepassInvResolution;
+
+    return gPrepassMask.Sample(gTextureSampler, linearUVSample);
+}
+
+float samplePrepass(float2 uv)
+{
+    const int2 pixelIndex = floor(gPrepassResolution * uv);
+
+    const float distance = 1.f;
+
+    const float2 linearUVSample = (float2(pixelIndex) - float2(-1, -1) * distance) * gPrepassInvResolution;
+    const float2 linearUVSample1 = (float2(pixelIndex) + float2(1, 1) * distance) * gPrepassInvResolution;
+    const float2 linearUVSample2 = (float2(pixelIndex) + float2(1, -1) * distance) * gPrepassInvResolution;
+    const float2 linearUVSample3 = (float2(pixelIndex) + float2(-1, 1) * distance) * gPrepassInvResolution;
+
+    return (gPrepassMask.Sample(gTextureSampler, linearUVSample).r
+         + gPrepassMask.Sample(gTextureSampler, linearUVSample1).r
+         + gPrepassMask.Sample(gTextureSampler, linearUVSample2).r
+         + gPrepassMask.Sample(gTextureSampler, linearUVSample3).r) / 4.f;
+}
+#endif // USE_PREPASS
 
 [numthreads(16, 16, 1)]
 void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localId : SV_GroupThreadID)
@@ -36,6 +73,26 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
     uint2 offset = (group.xy / 2u) * 32u + 2u * localId.xy + (group.xy % 2u); // 2x2 group alignment works better because of the per-pixel rotation. See SVAO::genNoiseTexture()
     uint2 svPos = offset + uint2(guardBand); // pixel position
     float2 texC = (svPos + float2(0.5)) * gData.invResolution; // texture position
+
+#if USE_PREPASS
+#if DEBUG_PREPASS
+    if (samplePrepass(texC) >= 0.98f)
+    {
+        gAOOut[svPos] = 0.f;
+        return;
+    }
+    else
+    {
+        gAOOut[svPos] = 1.f;
+        return;
+    }
+#endif // DEBUG_PREPASS
+    if (samplePrepass(texC) >= 0.98f)
+    {
+        gAOOut[svPos] = 1.f;
+        return;
+    }
+#endif // USE_PREPASS
 
     BasicAOData data;
     if (!data.Init(texC))

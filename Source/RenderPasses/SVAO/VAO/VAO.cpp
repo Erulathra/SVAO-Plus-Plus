@@ -31,6 +31,7 @@ namespace
 {
     const std::string kLinearDepthIn = "linearDepthIn";
     const std::string kNormalsViewIn = "normalViewIn";
+    const std::string kPrepassMask = "prepassMask";
 
     const std::string kAOOut = "aoOut";
     const std::string kAOMaskOut = "aoMaskOut";
@@ -41,11 +42,12 @@ namespace
     {
         const std::string kSVAOInputMode = "SVAOInputMode";
         const std::string kUseRayInterval = "useRayInterval";
+        const std::string kUsePrepass = "usePrepass";
     }
 
     namespace Shaders
     {
-        const std::string kVAOPass = "RenderPasses/SVAO/VAO/SVAORaster.ps.slang";
+        const std::string kVAOPass = "RenderPasses/SVAO/VAO/VAO.ps.slang";
     }
 }
 
@@ -55,6 +57,7 @@ VAO::VAO(ref<Device> pDevice, const Properties& props) : VAOBase(pDevice, props)
     {
         if (key == VAOArgs::kSVAOInputMode) mSVAOInputMode = value;
         else if (key == VAOArgs::kUseRayInterval) mUseRayInterval = value;
+        else if (key == VAOArgs::kUsePrepass) mUsePrepass = value;
     }
 }
 
@@ -69,6 +72,7 @@ Properties VAO::getProperties() const
 
     properties[VAOArgs::kSVAOInputMode] = mSVAOInputMode;
     properties[VAOArgs::kUseRayInterval] = mUseRayInterval;
+    properties[VAOArgs::kUsePrepass] = mUsePrepass;
 
     return properties;
 }
@@ -79,6 +83,8 @@ RenderPassReflection VAO::reflect(const CompileData& compileData)
 
     reflector.addInput(kLinearDepthIn, "Linear Depth");
     reflector.addInput(kNormalsViewIn, "Normal texture in view space (Uncompressed)");
+    reflector.addInput(kPrepassMask, "Prepass mask")
+                .flags(RenderPassReflection::Field::Flags::Optional);
 
     reflector.addOutput(kAOOut, "Result AO")
                 .bindFlags(ResourceBindFlags::AllColorViews)
@@ -110,6 +116,8 @@ void VAO::compile(RenderContext* pRenderContext, const CompileData& compileData)
         DefineList defines = GetCommonDefines(compileData);
         defines.add("SECONDARY_DEPTH_MODE", mSVAOInputMode ? "1" : "0");
         defines.add("USE_RAY_INTERVAL", mSVAOInputMode && mUseRayInterval ? "1" : "0");
+        defines.add("USE_PREPASS", mUsePrepass ? "1" : "0");
+        defines.add("DEBUG_PREPASS", mDebugPrepass ? "1" : "0");
 
         ProgramDesc computeShaderDesc;
         mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kVAOPass, "main", defines);
@@ -127,6 +135,7 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
 
     ref<Texture> pLinearDepthIn = renderData.getTexture(kLinearDepthIn);
     ref<Texture> pNormalIn = renderData.getTexture(kNormalsViewIn);
+    ref<Texture> pPrepassMask = renderData.getTexture(kPrepassMask);
 
     ref<Texture> pAOOut = renderData.getTexture(kAOOut);
     ref<Texture> pAOMaskOut = renderData.getTexture(kAOMaskOut);
@@ -161,6 +170,15 @@ void VAO::execute(RenderContext* pRenderContext, const RenderData& renderData)
             vars["gRayMinOut"] = pRayMinOut;
         }
 
+        if (pPrepassMask && mUsePrepass)
+        {
+            vars["gPrepassMask"] = pPrepassMask;
+
+            const float2 prepassResolution = float2(pPrepassMask->getWidth(), pPrepassMask->getHeight());
+            vars["StaticCB"]["gPrepassResolution"] = prepassResolution;
+            vars["StaticCB"]["gPrepassInvResolution"] = 1.f / prepassResolution;
+        }
+
         if (mSVAOInputMode)
         {
             vars["gStencil"] = pAOMaskOut;
@@ -180,6 +198,8 @@ void VAO::renderUI(Gui::Widgets& widget)
     bool requiresRecompile = false;
     requiresRecompile |= widget.checkbox("SVAO input Mode", mSVAOInputMode);
     requiresRecompile |= widget.checkbox("Use Ray Interval", mUseRayInterval);
+    requiresRecompile |= widget.checkbox("Use Prepass", mUsePrepass);
+    requiresRecompile |= widget.checkbox("Debug Prepass", mDebugPrepass);
 
     if (requiresRecompile)
     {

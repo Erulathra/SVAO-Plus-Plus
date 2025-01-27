@@ -8,6 +8,13 @@ import Scene.RaytracingInline;
 #define STENCIL(x) x
 #endif
 
+#define PREPASS_MODE_GRIDDY 0
+#define PREPASS_MODE_CAREFUL 1
+
+#ifndef PREPASS_SAMPLING_MODE
+#define PREPASS_SAMPLING_MODE PREPASS_MODE_CAREFUL
+#endif // PREPASS_SAMPLING_MODE
+
 struct PSOut
 {
     float ao1;
@@ -35,7 +42,8 @@ void writeOutput(uint2 pixel, PSOut output)
 }
 
 #if USE_PREPASS
-float samplePrepassGreedy(float2 uv)
+#if PREPASS_SAMPLING_MODE == PREPASS_MODE_GRIDDY
+float samplePrepass(float2 uv)
 {
     const int2 pixelIndex = floor(gPrepassResolution * uv);
 
@@ -44,7 +52,7 @@ float samplePrepassGreedy(float2 uv)
 
     return gPrepassMask.Sample(gTextureSampler, linearUVSample);
 }
-
+#else
 float samplePrepass(float2 uv)
 {
     const int2 pixelIndex = floor(gPrepassResolution * uv);
@@ -61,6 +69,7 @@ float samplePrepass(float2 uv)
          + gPrepassMask.Sample(gTextureSampler, linearUVSample2).r
          + gPrepassMask.Sample(gTextureSampler, linearUVSample3).r) / 4.f;
 }
+#endif // PREPASS_SAMPLING_MODE == PREPASS_MODE_GRIDDY
 #endif // USE_PREPASS
 
 [numthreads(16, 16, 1)]

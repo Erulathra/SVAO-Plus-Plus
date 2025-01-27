@@ -33,6 +33,20 @@
 
 using namespace Falcor;
 
+enum class VAOPrepassSamplingMode : uint32_t
+{
+    Griddy = 0,
+    Careful
+};
+
+FALCOR_ENUM_INFO(
+    VAOPrepassSamplingMode,
+    {
+        {VAOPrepassSamplingMode::Griddy, "Griddy"},
+        {VAOPrepassSamplingMode::Careful, "Careful"}
+    }
+);
+
 class VAO : public VAOBase
 {
 public:
@@ -56,6 +70,10 @@ private:
     bool mSVAOInputMode = false;
     bool mUseRayInterval = false;
     bool mUsePrepass = false;
+    bool mPrepass = false;
+    VAOPrepassSamplingMode mPrepassSamplingMode = VAOPrepassSamplingMode::Careful;
     bool mDebugPrepass = false;
 };
+
+FALCOR_ENUM_REGISTER(VAOPrepassSamplingMode)
 

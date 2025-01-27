@@ -43,6 +43,7 @@ namespace
         const std::string kSVAOInputMode = "SVAOInputMode";
         const std::string kUseRayInterval = "useRayInterval";
         const std::string kUsePrepass = "usePrepass";
+        const std::string kPrePassSamplingMode = "prePassSamplingMode";
     }
 
     namespace Shaders
@@ -58,6 +59,7 @@ VAO::VAO(ref<Device> pDevice, const Properties& props) : VAOBase(pDevice, props)
         if (key == VAOArgs::kSVAOInputMode) mSVAOInputMode = value;
         else if (key == VAOArgs::kUseRayInterval) mUseRayInterval = value;
         else if (key == VAOArgs::kUsePrepass) mUsePrepass = value;
+        else if (key == VAOArgs::kPrePassSamplingMode) mPrepassSamplingMode = value;
     }
 }
 
@@ -73,6 +75,7 @@ Properties VAO::getProperties() const
     properties[VAOArgs::kSVAOInputMode] = mSVAOInputMode;
     properties[VAOArgs::kUseRayInterval] = mUseRayInterval;
     properties[VAOArgs::kUsePrepass] = mUsePrepass;
+    properties[VAOArgs::kPrePassSamplingMode] = mPrepassSamplingMode;
 
     return properties;
 }
@@ -118,6 +121,7 @@ void VAO::compile(RenderContext* pRenderContext, const CompileData& compileData)
         defines.add("USE_RAY_INTERVAL", mSVAOInputMode && mUseRayInterval ? "1" : "0");
         defines.add("USE_PREPASS", mUsePrepass ? "1" : "0");
         defines.add("DEBUG_PREPASS", mDebugPrepass ? "1" : "0");
+        defines.add("PREPASS_SAMPLING_MODE", std::to_string(static_cast<uint32_t>(mPrepassSamplingMode)));
 
         ProgramDesc computeShaderDesc;
         mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kVAOPass, "main", defines);
@@ -200,6 +204,7 @@ void VAO::renderUI(Gui::Widgets& widget)
     requiresRecompile |= widget.checkbox("Use Ray Interval", mUseRayInterval);
     requiresRecompile |= widget.checkbox("Use Prepass", mUsePrepass);
     requiresRecompile |= widget.checkbox("Debug Prepass", mDebugPrepass);
+    requiresRecompile |= widget.dropdown("Prepass sampling mode", mPrepassSamplingMode);
 
     if (requiresRecompile)
     {

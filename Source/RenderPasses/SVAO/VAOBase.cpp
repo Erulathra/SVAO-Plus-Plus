@@ -81,10 +81,19 @@ void VAOBase::compile(RenderContext* pRenderContext, const CompileData& compileD
 {
     RenderPass::compile(pRenderContext, compileData);
 
+    if (!mpScene)
+    {
+        return;
+    }
+
     mVaoData.resolution = float2(compileData.defaultTexDims.x, compileData.defaultTexDims.y);
     mVaoData.aoResolution = mVaoData.resolution;
     mVaoData.invResolution = float2(1.0f) / mVaoData.resolution;
     mVaoData.aoInvResolution = mVaoData.invResolution;
+
+    const CameraData& cameraData = mpScene->getCamera()->getData();
+
+    mVaoData.cameraImageScale = 0.5f * float2(cameraData.frameWidth / cameraData.focalLength, cameraData.frameHeight / cameraData.focalLength);
     mVaoData.sdGuard = mEnableGuardBand ? getExtraGuardBand() : 0;
     mVaoData.lowResolution = getStochMapSize(compileData.defaultTexDims);
     mVaoData.noiseScale = mVaoData.resolution / 4.0f; // noise texture is 4x4 resolution

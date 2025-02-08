@@ -62,12 +62,12 @@ RenderPassReflection DepthBranchPass::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
     reflector.addInput(kTextureOne, "Texture One")
-        .format(ResourceFormat::R32Float);
+        .format(ResourceFormat::R16Float);
     reflector.addInput(kTextureTwo, "Texture Two")
-        .format(ResourceFormat::R32Float);
+        .format(ResourceFormat::R16Float);
 
     reflector.addOutput(kResult, "Result Texture")
-        .format(ResourceFormat::R32Float);
+        .format(ResourceFormat::R16Float);
 
     return reflector;
 }

@@ -42,7 +42,7 @@ const ChannelList GBufferLite::kGBufferChannels = {
     {"normW", "gNormW", "Shading normal in world space", true, ResourceFormat::RGBA32Float},
     {"diffuseOpacity", "gDiffOpacity", "Diffuse reflection albedo and opacity", true, ResourceFormat::RGBA32Float},
     {"specRough", "gSpecRough", "Specular reflectance and roughness", true, ResourceFormat::RGBA32Float},
-    {"linearDepth", "gLinearDepth", "LinearDepth", true, ResourceFormat::R32Float},
+    {"linearDepth", "gLinearDepth", "LinearDepth", true, ResourceFormat::R16Float},
 };
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)

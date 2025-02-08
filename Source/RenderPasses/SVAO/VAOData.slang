@@ -38,6 +38,8 @@ struct VAOData
     float2 aoInvResolution; // resolution of resutl
     float2 lowResolution; // low resolution for the SD-map (without guard band). This will be same as resolution, or 1/2, or 1/4 etc.
     float2 invResolution; // 1 / resolution
+    float2 cameraImageScale; // UV to view space image scale
+
     float radius = 0.5f;
     float exponent = 2.0f;
     float thickness = 0.0f;

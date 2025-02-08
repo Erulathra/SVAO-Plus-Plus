@@ -145,17 +145,15 @@ bool isSamePixel(float2 uv1, float2 uv2)
 // return: view space position (negative z)
 float3 UVToViewSpace(float2 uv, float viewDepth)
 {
-    float2 ndc = float2(uv.x, 1.0 - uv.y) * 2.0 - 1.0; // normalized device coordinates [-1, 1]
-    const float2 imageScale = 0.5 * float2(gCamera.data.frameWidth / gCamera.data.focalLength, gCamera.data.frameHeight / gCamera.data.focalLength);
-    return float3(ndc * viewDepth * imageScale, -viewDepth);
+    const float2 ndc = float2(uv.x, 1.f - uv.y) * 2.f - 1.0f; // normalized device coordinates [-1, 1]
+    return float3(ndc * viewDepth * gData.cameraImageScale, -viewDepth);
 }
 
 // posV: view space position (negative z)
 // return: texture uv [0, 1]
 float2 ViewSpaceToUV(float3 posV)
 {
-    const float2 imageScale = 0.5 * float2(gCamera.data.frameWidth / gCamera.data.focalLength, gCamera.data.frameHeight / gCamera.data.focalLength);
-    float2 ndc = posV.xy / (imageScale * posV.z);
+    float2 ndc = posV.xy / (gData.cameraImageScale * posV.z);
     return ndc * float2(-0.5, 0.5) + 0.5; // since posV.z is negative, the sign order is inversed
 }
 

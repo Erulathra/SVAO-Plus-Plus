@@ -44,7 +44,8 @@ namespace
 
     const std::string kResolutionDivisor = "resolutionDivisor";
     const std::string kEnableGuardBand = "enableGuardBand";
-    const std::string khashAlgorithm = "hashAlgorithm";
+    const std::string kHashAlgorithm = "hashAlgorithm";
+    const std::string kUseJitter = "useJitter";
 
     const uint32_t kBaseGuardBandSize = 512;
 }
@@ -67,7 +68,8 @@ RTStochasticDepth::RTStochasticDepth(ref<Device> pDevice, const Properties& prop
     {
         if (key == kResolutionDivisor) mResolutionDivisor = value;
         else if (key == kEnableGuardBand) mEnableGuardBand = value;
-        else if (key == khashAlgorithm) mHashAlgorithm = value;
+        else if (key == kHashAlgorithm) mHashAlgorithm = value;
+        else if (key == kUseJitter) mUseJitter = value;
     }
 }
 
@@ -76,7 +78,8 @@ Properties RTStochasticDepth::getProperties() const
     Properties props;
     props[kResolutionDivisor] = mResolutionDivisor;
     props[kEnableGuardBand] = mEnableGuardBand;
-    props[khashAlgorithm] = mHashAlgorithm;
+    props[kHashAlgorithm] = mHashAlgorithm;
+    props[kUseJitter] = mUseJitter;
     return props;
 }
 
@@ -130,6 +133,7 @@ void RTStochasticDepth::execute(RenderContext* pRenderContext, const RenderData&
         defines.add("USE_RAY_INTERVAL", useRayInterval ? "1" : "0");
         defines.add("GUARD_BAND", std::to_string(mEnableGuardBand ? SDMath::getExtraGuardBand(mResolutionDivisor, kBaseGuardBandSize) : 0));
         defines.add("HASH_TYPE", std::to_string(mHashAlgorithm));
+        defines.add("SD_JITTER", mUseJitter ? "1" : "0");
 
         ProgramDesc desc;
         desc.addShaderModules(mpScene->getShaderModules());
@@ -178,6 +182,7 @@ void RTStochasticDepth::renderUI(Gui::Widgets& widget)
     const static Gui::DropdownList kHashAlgorithmDropdownList = {
         {0, "Sine Hash (demo-scene hash)"},
         {1, "PCG2D Hash"},
+        {2, "Float Hash"},
     };
 
     bool bRequestRecompile = false;
@@ -185,6 +190,7 @@ void RTStochasticDepth::renderUI(Gui::Widgets& widget)
     bRequestRecompile |= widget.dropdown("ResolutionDivisor", kResolutionDivisorDropdownList, mResolutionDivisor);
     bRequestRecompile |= widget.dropdown("Hash Algorithm", kHashAlgorithmDropdownList, mHashAlgorithm);
     bRequestRecompile |= widget.checkbox("Enable Guard Band", mEnableGuardBand);
+    bRequestRecompile |= widget.checkbox("Use Jitter", mUseJitter);
 
     if (bRequestRecompile)
     {

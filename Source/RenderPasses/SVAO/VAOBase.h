@@ -65,6 +65,7 @@ protected:
 
     bool mEnableGuardBand = true;
     bool mEnableAdaptiveSampling = false;
+    bool mUseDitherTexture = true;
 
     int32_t mStochMapGuardBand = 512;
     uint mSDMapResolutionDivisor = 4;

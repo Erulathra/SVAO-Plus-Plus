@@ -108,8 +108,12 @@ void BilateralBlur::compile(RenderContext* pRenderContext, const CompileData& co
 {
     DefineList defines;
     defines.add("KERNEL_RADIUS", std::to_string(mKernelSize));
-    float2 invResolution = float2(1.f) / float2(compileData.defaultTexDims);
-    defines.add("INV_RESOLUTION", fmt::format("float2({},{})", invResolution.x, invResolution.y));
+    const float2 invResolution = float2(1.f) / float2(compileData.defaultTexDims);
+    if (all(isfinite(invResolution)))
+    {
+        defines.add("INV_RESOLUTION", fmt::format("float2({},{})", invResolution.x, invResolution.y));
+    }
+
     defines.add("BETTER_SLOPE", std::to_string(static_cast<uint>(mBetterSlope)));
 
     defines.add("DIRECTION", "float2(1.f, 0.f)");

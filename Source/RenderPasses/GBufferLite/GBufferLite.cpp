@@ -27,11 +27,18 @@
  **************************************************************************/
 #include "GBufferLite.h"
 
+#include "Utils/SampleGenerators/DxSamplePattern.h"
+#include "Utils/SampleGenerators/HaltonSamplePattern.h"
+#include "Utils/SampleGenerators/StratifiedSamplePattern.h"
+
 namespace
 {
     const std::string kDepthPassProgramFile = "RenderPasses/GBufferLite/DepthPassLite.3d.slang";
     const std::string kGBufferPassProgramFile = "RenderPasses/GBufferLite/GBufferLite.3d.slang";
-    
+
+    const std::string kJitterSamplePattern = "jitterSamplePattern";
+    const std::string kJitterSamplesCount = "jitterSamplesCount";
+
     const RasterizerState::CullMode kDefaultCullMode = RasterizerState::CullMode::Back;
     
     const std::string kDepthName = "depth";
@@ -43,6 +50,7 @@ const ChannelList GBufferLite::kGBufferChannels = {
     {"diffuseOpacity", "gDiffOpacity", "Diffuse reflection albedo and opacity", true, ResourceFormat::RGBA32Float},
     {"specRough", "gSpecRough", "Specular reflectance and roughness", true, ResourceFormat::RGBA32Float},
     {"linearDepth", "gLinearDepth", "LinearDepth", true, ResourceFormat::R16Float},
+    {"motionVector", "gMotionVector", "MotionVectors", true, ResourceFormat::R32Float},
 };
 
 extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registry)
@@ -57,8 +65,6 @@ GBufferLite::GBufferLite(ref<Device> pDevice, const Properties& props) : RenderP
         FALCOR_THROW("GBufferLite requires SM6 or greater");
     }
 
-    parseProperties(props);
-
     mDepthPass.pState = GraphicsState::create(mpDevice);
     mGBufferPass.pState = GraphicsState::create(mpDevice);
 
@@ -68,25 +74,37 @@ GBufferLite::GBufferLite(ref<Device> pDevice, const Properties& props) : RenderP
     mGBufferPass.pState->setDepthStencilState(depthStencilState);
 
     mpFbo = Fbo::create(mpDevice);
+
+    for (const auto& [name, value] : props)
+    {
+        if (name == kJitterSamplePattern) mJitterSamplePattern = value;
+        else if (name == kJitterSamplesCount) mJitterSamplesCount = value;
+    }
 }
 
 Properties GBufferLite::getProperties() const
 {
-    return {};
+    Properties props;
+    props[kJitterSamplePattern] = mJitterSamplePattern;
+    props[kJitterSamplesCount] = mJitterSamplesCount;
+    return props;
 }
 
 RenderPassReflection GBufferLite::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector;
 
-    reflector.addOutput(kDepthName, "DepthBuffer")
-             .format(ResourceFormat::D32Float)
-             .bindFlags(ResourceBindFlags::DepthStencil)
-             .texture2D();
+    reflector.addOutput(kDepthName, "DepthBuffer").format(ResourceFormat::D32Float).bindFlags(ResourceBindFlags::DepthStencil).texture2D();
 
     addRenderPassOutputs(reflector, kGBufferChannels, ResourceBindFlags::RenderTarget);
-    
+
     return reflector;
+}
+
+void GBufferLite::compile(RenderContext* pRenderContext, const CompileData& compileData)
+{
+    mFrameDim = compileData.defaultTexDims;
+    mInvFrameDim = 1.f / float2(mFrameDim);
 }
 
 void GBufferLite::execute(RenderContext* pRenderContext, const RenderData& renderData)
@@ -161,6 +179,8 @@ void GBufferLite::execute(RenderContext* pRenderContext, const RenderData& rende
             mGBufferPass.pVars = ProgramVars::create(mpDevice, mGBufferPass.pProgram.get());
         }
 
+        mGBufferPass.pVars->getRootVar()["PerFrameCB"]["gFrameDim"] = mFrameDim;
+
         mpScene->bindShaderData(mGBufferPass.pVars->getRootVar()["gScene"]);
 
         mGBufferPass.pState->setFbo(mpFbo); // Sets the viewport
@@ -170,18 +190,24 @@ void GBufferLite::execute(RenderContext* pRenderContext, const RenderData& rende
     }
 }
 
-void GBufferLite::renderUI(Gui::Widgets& widget) {}
+void GBufferLite::renderUI(Gui::Widgets& widget)
+{
+    bool bUpdateJitterPattern = widget.dropdown("Jitter Pattern", mJitterSamplePattern);
+
+    if (bUpdateJitterPattern)
+    {
+        updateSamplePattern();
+    }
+}
 
 void GBufferLite::setScene(RenderContext* pRenderContext, const ref<Scene>& pScene)
 {
     mpScene = pScene;
 
     recreatePrograms();
+    updateSamplePattern();
 }
 
-void GBufferLite::parseProperties(const Properties& props)
-{
-}
 
 void GBufferLite::recreatePrograms()
 {
@@ -189,4 +215,31 @@ void GBufferLite::recreatePrograms()
     mDepthPass.pVars = nullptr;
     mGBufferPass.pProgram = nullptr;
     mGBufferPass.pVars = nullptr;
+
+}
+
+void GBufferLite::updateSamplePattern()
+{
+    if (mpScene)
+    {
+        mpCPUJitterSampleGenerator = createSampleGenerator();
+        mpScene->getCamera()->setPatternGenerator(mpCPUJitterSampleGenerator, mInvFrameDim);
+    }
+}
+
+ref<CPUSampleGenerator> GBufferLite::createSampleGenerator() const
+{
+    switch (mJitterSamplePattern)
+    {
+    case JitterSamplePattern::Center:
+        return nullptr;
+    case JitterSamplePattern::DirectX:
+        return DxSamplePattern::create(mJitterSamplesCount);
+    case JitterSamplePattern::Halton:
+        return HaltonSamplePattern::create(mJitterSamplesCount);
+    case JitterSamplePattern::Stratified:
+        return StratifiedSamplePattern::create(mJitterSamplesCount);
+    }
+
+    return nullptr;
 }

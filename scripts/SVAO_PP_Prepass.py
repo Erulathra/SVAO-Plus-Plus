@@ -1,16 +1,17 @@
 from pathlib import WindowsPath, PosixPath
 from falcor import *
 
-def render_graph_g():
-    g = RenderGraph('g')
-    g.create_pass('VAO', 'VAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 16, 'resolutionDivisor': 4, 'enableGuardBand': True, 'SVAOInputMode': True, 'useRayInterval': True, 'usePrepass': True, 'prePassSamplingMode': 'Careful'})
-    g.create_pass('RTStochasticDepth', 'RTStochasticDepth', {'resolutionDivisor': 4, 'enableGuardBand': True, 'hashAlgorithm': 1})
+def render_graph_DefaultRenderGraph():
+    g = RenderGraph('DefaultRenderGraph')
+    g.create_pass('VAO', 'VAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 16, 'resolutionDivisor': 4, 'enableGuardBand': True, 'useDitherTexture': True, 'SVAOInputMode': True, 'useRayInterval': True, 'usePrepass': True, 'prePassSamplingMode': 'Careful'})
+    g.create_pass('RTStochasticDepth', 'RTStochasticDepth', {'resolutionDivisor': 4, 'enableGuardBand': True, 'hashAlgorithm': 0, 'useJitter': True})
     g.create_pass('NormalsToViewSpace', 'NormalsToViewSpace', {})
-    g.create_pass('SVAO', 'SVAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 16, 'resolutionDivisor': 4, 'enableGuardBand': True})
+    g.create_pass('SVAO', 'SVAO', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True, 'useDitherTexture': True, 'useCameraJitter': True})
     g.create_pass('BilateralBlur', 'BilateralBlur', {'numIterations': 1, 'kernelSize': 2, 'betterSlope': True})
     g.create_pass('DeferredLighting', 'DeferredLighting', {'ambientLight': 0.0, 'aoBlendMode': 3})
-    g.create_pass('GBufferLite', 'GBufferLite', {})
-    g.create_pass('VAOPrepass', 'VAOPrepass', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True, 'aoThreshold': 0.8999999761581421})
+    g.create_pass('GBufferLite', 'GBufferLite', {'jitterSamplePattern': 'Center', 'jitterSamplesCount': 16})
+    g.create_pass('VAOPrepass', 'VAOPrepass', {'kVaoRadius': 0.5, 'kVaoExponent': 2.0, 'kSampleCount': 8, 'resolutionDivisor': 4, 'enableGuardBand': True, 'useDitherTexture': True, 'aoThreshold': 0.8999999761581421})
+    g.create_pass('TAA', 'TAA', {'alpha': 0.10000000149011612, 'colorBoxSigma': 1.0, 'antiFlicker': True})
     g.add_edge('NormalsToViewSpace.normalsViewOut', 'VAO.normalViewIn')
     g.add_edge('RTStochasticDepth.stochasticDepth', 'SVAO.stochDepthIn')
     g.add_edge('VAO.aoOut', 'SVAO.aoInOut')
@@ -29,16 +30,19 @@ def render_graph_g():
     g.add_edge('GBufferLite.specRough', 'DeferredLighting.specRough')
     g.add_edge('NormalsToViewSpace.normalsViewOut', 'VAOPrepass.normalViewIn')
     g.add_edge('VAOPrepass.aoMaskOut', 'VAO.prepassMask')
-    g.add_edge('GBufferLite.linearDepth', 'VAOPrepass.linearDepthIn')
-    g.add_edge('GBufferLite.linearDepth', 'VAO.linearDepthIn')
-    g.add_edge('GBufferLite.linearDepth', 'RTStochasticDepth.linearDepthIn')
     g.add_edge('GBufferLite.linearDepth', 'SVAO.linearDepthIn')
+    g.add_edge('GBufferLite.linearDepth', 'VAO.linearDepthIn')
     g.add_edge('GBufferLite.linearDepth', 'BilateralBlur.linearDepthIn')
+    g.add_edge('GBufferLite.linearDepth', 'VAOPrepass.linearDepthIn')
+    g.add_edge('GBufferLite.linearDepth', 'RTStochasticDepth.linearDepthIn')
+    g.add_edge('GBufferLite.motionVector', 'TAA.motionVecs')
+    g.add_edge('DeferredLighting.kColorOut', 'TAA.colorIn')
     g.mark_output('DeferredLighting.kColorOut')
     g.mark_output('BilateralBlur.colorOut')
     g.mark_output('VAOPrepass.aoMaskOut')
+    g.mark_output('TAA.colorOut')
     return g
 
-g = render_graph_g()
-try: m.addGraph(g)
+DefaultRenderGraph = render_graph_DefaultRenderGraph()
+try: m.addGraph(DefaultRenderGraph)
 except NameError: None

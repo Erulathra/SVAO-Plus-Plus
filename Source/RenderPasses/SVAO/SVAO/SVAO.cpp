@@ -37,6 +37,8 @@ namespace
 
     const std::string kAOInOut = "aoInOut";
 
+    const std::string kUseCameraJitter = "useCameraJitter";
+
     namespace Shaders
     {
         const std::string kSVAOPass = "RenderPasses/SVAO/SVAO/SVAORaster2.ps.slang";
@@ -46,13 +48,32 @@ namespace
 SVAO::SVAO(ref<Device> pDevice, const Properties& props)
     : VAOBase(pDevice, props)
 {
-
+    for (const auto& [name, value] : props)
+    {
+        if (name == kUseCameraJitter) mUseCameraJitter = value;
+    }
 }
 
 ref<SVAO> SVAO::create(ref<Device> pDevice, const Properties& props)
 {
     return make_ref<SVAO>(pDevice, props);
 }
+Properties SVAO::getProperties() const
+{
+    Properties props = VAOBase::getProperties();
+    props[kUseCameraJitter] = mUseCameraJitter;
+    return props;
+}
+void SVAO::renderUI(Gui::Widgets& widget)
+{
+    VAOBase::renderUI(widget);
+
+    if (widget.checkbox("Use Jitter", mUseCameraJitter))
+    {
+        requestRecompile();
+    }
+}
+
 RenderPassReflection SVAO::reflect(const CompileData& compileData)
 {
     RenderPassReflection reflector{};
@@ -77,6 +98,7 @@ void SVAO::compile(RenderContext* pRenderContext, const CompileData& compileData
     {
         DefineList defines = GetCommonDefines(compileData);
         defines.add("SECONDARY_DEPTH_MODE", "1");
+        defines.add("SD_JITTER", mUseCameraJitter ? "1" : "0");
 
         ProgramDesc computeShaderDesc;
         mpComputePass = ComputePass::create(pRenderContext->getDevice(), Shaders::kSVAOPass, "main", defines);

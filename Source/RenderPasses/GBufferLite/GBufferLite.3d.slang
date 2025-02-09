@@ -40,13 +40,24 @@ struct GBufferPSOut
     float4 diffuseOpacity : SV_TARGET2;
     float4 specRough : SV_TARGET3;
     float linearDepth : SV_TARGET4;
+    float2 motionVector : SV_TARGET5;
 };
 
-#define is_valid(name) (is_valid_##name != 0)
+cbuffer PerFrameCB
+{
+    uint2 gFrameDim;
+};
 
 VSOut vsMain(VSIn vsIn)
 {
     return defaultVS(vsIn);
+}
+
+float2 computeMotionVector(const VSOut vsOut, const int2 ipos)
+{
+    float2 pixelPos = ipos + float2(0.5, 0.5);
+    float4 prevPosH = vsOut.prevPosH;
+    return calcMotionVector(pixelPos, prevPosH, gFrameDim) + float2(gScene.camera.data.jitterX, -gScene.camera.data.jitterY);
 }
 
 [earlydepthstencil]
@@ -77,6 +88,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID, float3 bary
     psOut.diffuseOpacity = gbuf.diffuseOpacity;
     psOut.specRough = gbuf.specRough;
     psOut.linearDepth = -mul(gScene.camera.data.viewMat, gbuf.posW).z;
+    psOut.motionVector = computeMotionVector(vsOut, ipos);
 
     return psOut;
 }

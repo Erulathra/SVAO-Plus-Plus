@@ -5,7 +5,6 @@ target_sources(RTStochasticDepth PRIVATE
     RTStochasticDepth.h
 
     Common.slangh
-    Jitter.slangh
     Stencil.ps.slang
     StochasticDepthMapRT.rt.slang
 )

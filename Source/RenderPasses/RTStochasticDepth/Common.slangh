@@ -1,8 +1,6 @@
 import Utils.Math.PackedFormats;
 import Utils.Math.HashUtils;
 
-// #include "Jitter.slangh"
-
 Texture2D<float> gLinearDepthIn;
 SamplerState S; // linear sampler for downsampling depth on half res
 

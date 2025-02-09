@@ -42,10 +42,15 @@ public:
     SVAO(ref<Device> pDevice, const Properties& props);
     static ref<SVAO> create(ref<Device> pDevice, const Properties& props);
 
+    Properties getProperties() const override;
+    void renderUI(Gui::Widgets& widget) override;
+
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
     virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
 
 private:
     ref<ComputePass> mpComputePass;
+
+    bool mUseCameraJitter = false;
 };

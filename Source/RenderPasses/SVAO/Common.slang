@@ -5,6 +5,7 @@ import Scene.Shading;
 import Rendering.Materials.TexLODHelpers;
 import Rendering.Materials.TexLODTypes;
 import Utils.Math.PackedFormats;
+import Utils.Math.HashUtils;
 
 #include "Utils/Math/MathConstants.slangh"
 
@@ -65,6 +66,10 @@ static const float sampleRadius[32] = {0.9682458365518543, 0.5974803093982587, 0
 #define USE_PREPASS 1
 #endif // ifndef USE_PREPASS
 
+#ifndef USE_DITHER_TEX
+#define USE_DITHER_TEX 1
+#endif // ifndef USE_DITHER_TEX
+
 cbuffer StaticCB
 {
     VAOData gData;
@@ -91,6 +96,19 @@ Texture2D<float4> gLinearSDIn;
 
 Texture2D<uint> gNormalIn;
 Texture2D<float> gNoiseTex;
+
+float sampleDither(float2 UV)
+{
+    const float4 DitherValues[] = {
+        float4(0.f,  8.f,  2.f,  10.f),
+        float4(12.f, 4.f,  14.f, 6.f ),
+        float4(3.f,  11.f, 1.f,  9.f ),
+        float4(15.f, 7.f,  13.f, 5.f)
+    };
+
+    const uint2 Index = fract(UV) * 4.f;
+    return DitherValues[Index.y][Index.x] * (1.f / 16.f);
+}
 
 uint GetNumSamples(float linearDepth)
 {
@@ -231,7 +249,7 @@ struct BasicAOData
     float radius; // world space radius. Usually gData.radius, but can be smaller if the screen space radius would be too large
 
     // returns false if sample needs no shading (background)
-    [mutating] bool Init(float2 texC)
+    [mutating] bool Init(const float2 texC)
     {
         float linearDepth = gLinearDepthIn.SampleLevel(gTextureSampler, texC, 0);
         radiusInPixels = GetAORadiusInPixels(linearDepth);
@@ -261,7 +279,11 @@ struct BasicAOData
         }
 
         // Calculate tangent space (use random direction for tangent orientation)
-        float randRotation = gNoiseTex.SampleLevel(gNoiseSampler, texC * gData.noiseScale, 0) * 2.0 * 3.141;
+    #if USE_DITHER_TEX
+        const float randRotation = gNoiseTex.SampleLevel(gNoiseSampler, texC * gData.noiseScale, 0) * M_2PI;
+    #else
+        const float randRotation = sampleDither(texC * gData.noiseScale) * M_2PI;
+    #endif // USE_DITHER_TEX
         float2 randDir = float2(sin(randRotation), cos(randRotation));
 
         // determine tangent space
@@ -441,13 +463,15 @@ float calcAO2(uint2 svPos, uint mask)
         //int2 pixelCoord = UVToSDPixel(s.rasterSamplePosUV);
         int2 pixelCoord = UVToSDPixel(s.samplePosUV);
 
-        //float2 sdSampleUV = getSnappedUV(s.rasterSamplePosUV, float2(sdwidth, sdheight));
-        // calc uv space position based on primary frame buffer size
+        // float2 sdSampleUV = getSnappedUV(s.rasterSamplePosUV, float2(sdwidth, sdheight));
+        //  calc uv space position based on primary frame buffer size
 #if SD_JITTER
-        float2 sdSampleUV = (pixelCoord - gData.sdGuard + randomJitter(pixelCoord)) / gData.lowResolution;
+        const float2 jitter = float2(gScene.camera.data.jitterX, gScene.camera.data.jitterY);
+        float2 sdSampleUV = (pixelCoord - gData.sdGuard + jitter) / gData.lowResolution;
 #else
         float2 sdSampleUV = (pixelCoord - gData.sdGuard + 0.5f) / gData.lowResolution;
 #endif // else SD_JITTER
+
         const float depthRange = gCamera.data.farZ - gCamera.data.nearZ;
         const float depthOffset = gCamera.data.nearZ;
         bool stochInside = false;

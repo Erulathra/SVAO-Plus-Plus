@@ -75,39 +75,39 @@ uint2 blockCipherTEA(uint v0, uint v1, uint iterations = 16)
 
 #define HASH_TYPE_DEMOSCENE 0
 #define HASH_TYPE_PCG 1
+#define HASH_TYPE_FLOAT 2
 
 #ifndef HASH_TYPE
-#define HASH_TYPE 1
+#define HASH_TYPE 0
 #endif
 
-#define UINT_MAX 4294967295
-#define UINT_MAX_INV 1.f / float(UINT_MAX)
+#define UINT_MAX 4294967295.f
 
-uint2 pcgHash(uint2 v)
+float pcgHash(uint seed)
 {
-    v = v * 1664525u + 1013904223u;
+    seed = seed * 747796405u + 2891336453u;
+    seed = ((seed >> ((seed >> 28u) + 4u)) ^ seed) * 277803737u;
+    seed = (seed >> 22u) ^ seed;
+    
+    // Convert uint32 to normalized float [0,1]
+    return frac(float(seed) / UINT_MAX) * 2.f - 1.f;
+}
 
-    v.x += v.y * 1664525u;
-    v.y += v.x * 1664525u;
+float pcgHash2(float2 seed)
+{
+    uint h = uint(seed.x * 1664525u + seed.y * 1013904223u);
 
-    v = v ^ (v >> 16u);
-
-    v.x += v.y * 1664525u;
-    v.y += v.x * 1664525u;
-
-    v = v ^ (v >> 16u);
-
-    return v;
+    return pcgHash(h);
 }
 
 // hash function from "improved alpha testing using hashed sampling"
 float hash(float2 v)
 {
 #if HASH_TYPE == HASH_TYPE_PCG
-    uint2 seedAsUint = uint2(asuint(v.x), asuint(v.y));
-    uint2 result = pcgHash(seedAsUint);
-    return frac(result.x * UINT_MAX_INV + result.y * UINT_MAX_INV);
-#else // Demoscene hash
+    return pcgHash2(v);
+#elif HASH_TYPE == HASH_TYPE_FLOAT // Demoscene hash
+    return floatHash(v);
+#else
     return frac(1.0e4 * sin(17.0 * v.x + 0.1 * v.y) * (0.1 + abs(sin(13.0 * v.y + v.x))));
 #endif
 }

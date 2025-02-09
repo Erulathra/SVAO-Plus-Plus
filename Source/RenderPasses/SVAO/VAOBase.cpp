@@ -15,6 +15,7 @@ namespace
 
         const std::string kResolutionDivisor = "resolutionDivisor";
         const std::string kEnableSDGuardBand = "enableGuardBand";
+        const std::string kUseDitherTexture = "useDitherTexture";
     }
 }
 
@@ -46,6 +47,7 @@ VAOBase::VAOBase(ref<Device> pDevice, const Properties& props) : RenderPass(pDev
         else if (key == VAOArgs::kSampleCount) mSampleCount = value;
         else if (key == VAOArgs::kResolutionDivisor) mSDMapResolutionDivisor = value;
         else if (key == VAOArgs::kEnableSDGuardBand) mEnableGuardBand = value;
+        else if (key == VAOArgs::kUseDitherTexture) mUseDitherTexture = value;
     }
 }
 
@@ -59,6 +61,7 @@ DefineList VAOBase::GetCommonDefines(const CompileData& compileData)
     defines.add("NUM_DIRECTIONS", std::to_string(mSampleCount));
     defines.add("LOG2_NUM_DIRECTIONS", std::to_string(static_cast<uint>(log2(mSampleCount))));
     defines.add("ADAPTIVE_SAMPLING", mEnableAdaptiveSampling ? "1" : "0");
+    defines.add("USE_DITHER_TEX", mUseDitherTexture ? "1" : "0");
 
     return defines;
 }
@@ -134,6 +137,7 @@ void VAOBase::renderUI(Gui::Widgets& widget)
     requiresRecompile |= widget.dropdown("SDMap resolution divisor", kResolutionDivisorDropdownList, mSDMapResolutionDivisor);
     requiresRecompile |= widget.checkbox("Enable Guard Band", mEnableGuardBand);
     requiresRecompile |= widget.checkbox("Enable Adaptive Sampling", mEnableAdaptiveSampling);
+    requiresRecompile |= widget.checkbox("Use dither texture", mUseDitherTexture);
 
     if (requiresRecompile)
     {
@@ -150,6 +154,7 @@ Properties VAOBase::getProperties() const
     properties[VAOArgs::kSampleCount] = mSampleCount;
     properties[VAOArgs::kResolutionDivisor] = mSDMapResolutionDivisor;
     properties[VAOArgs::kEnableSDGuardBand] = mEnableGuardBand;
+    properties[VAOArgs::kUseDitherTexture] = mUseDitherTexture;
 
     return properties;
 }

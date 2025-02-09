@@ -59,5 +59,6 @@ private:
 
     uint32_t mResolutionDivisor = 4;
     bool mEnableGuardBand = true;
+    bool mUseJitter = false;
     uint32_t mHashAlgorithm = 1;
 };

@@ -32,6 +32,24 @@
 
 using namespace Falcor;
 
+enum class JitterSamplePattern : uint32_t
+{
+    Center,
+    DirectX,
+    Halton,
+    Stratified,
+};
+
+FALCOR_ENUM_INFO(
+    JitterSamplePattern,
+    {
+        {JitterSamplePattern::Center, "Center"},
+        {JitterSamplePattern::DirectX, "DirectX"},
+        {JitterSamplePattern::Halton, "Halton"},
+        {JitterSamplePattern::Stratified, "Stratified"},
+    }
+);
+
 class GBufferLite : public RenderPass
 {
 
@@ -72,7 +90,7 @@ public:
 
     virtual Properties getProperties() const override;
     virtual RenderPassReflection reflect(const CompileData& compileData) override;
-    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override {}
+    virtual void compile(RenderContext* pRenderContext, const CompileData& compileData) override;
     virtual void execute(RenderContext* pRenderContext, const RenderData& renderData) override;
     virtual void renderUI(Gui::Widgets& widget) override;
     virtual void setScene(RenderContext* pRenderContext, const ref<Scene>& pScene) override;
@@ -80,9 +98,19 @@ public:
     virtual bool onKeyEvent(const KeyboardEvent& keyEvent) override { return false; }
 
 private:
-    /** Parses pass properties */
-    void parseProperties(const Properties& props);
-
     /** Recreates shader programs */
     void recreatePrograms();
+
+    ref<CPUSampleGenerator> mpCPUJitterSampleGenerator;
+    JitterSamplePattern mJitterSamplePattern = JitterSamplePattern::Center;
+    uint32_t mJitterSamplesCount = 16;
+
+    uint2 mFrameDim = {};
+    float2 mInvFrameDim = {};
+
+private:
+    void updateSamplePattern();
+    ref<CPUSampleGenerator> createSampleGenerator() const;
 };
+
+FALCOR_ENUM_REGISTER(JitterSamplePattern);

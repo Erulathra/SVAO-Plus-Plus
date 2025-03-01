@@ -85,7 +85,7 @@ RenderPassReflection VAO::reflect(const CompileData& compileData)
     RenderPassReflection reflector {};
 
     reflector.addInput(kLinearDepthIn, "Linear Depth");
-    reflector.addInput(kNormalsViewIn, "Normal texture in view space (Uncompressed)");
+    reflector.addInput(kNormalsViewIn, "Normal texture in view space");
     reflector.addInput(kPrepassMask, "Prepass mask")
                 .flags(RenderPassReflection::Field::Flags::Optional);
 

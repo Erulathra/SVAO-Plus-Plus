@@ -173,6 +173,7 @@ void RTAO::renderUI(Gui::Widgets& widget)
         dirty |= widget.var("Falloff decay constant", mData.exponentialFalloffDecayConstant, 0.f, 20.f, 0.1f);
     }
     dirty |= widget.var("min Ambient Illumination", mData.minimumAmbientIllumination, 0.0f, 1.0f, 0.001f);
+    dirty |= widget.var("Exponent", mData.exponent, 1.0f, 10.0f, 0.001f);
 
     dirty |= widget.var("spp", mData.spp, 1u, UINT32_MAX, 1u);
     widget.tooltip("Numbers of ray per pixel. If higher than 1 a slower sample generator is used");

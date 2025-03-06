@@ -14,6 +14,7 @@ struct RTAOData
     float minimumAmbientIllumination = 0.07f; //0-1
     float normalScale = 0.01f;
 
+    float exponent = 2.f;
 };
 
 END_NAMESPACE_FALCOR

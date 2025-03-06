@@ -208,5 +208,5 @@ void rayGen()
     }
 
     rayDistanceOut[svPos] = tHit;
-    ambientOut[svPos] = ambientCoef;
+    ambientOut[svPos] = pow(ambientCoef, gData.exponent);
 }

@@ -39,6 +39,10 @@ namespace
     const std::string kAmbient = "ambient";
     const std::string kRayDistance = "rayDistance";
 
+    const std::string kExponent = "exponent";
+    const std::string kSpp = "spp";
+    const std::string kMinimalAmbientIllumination = "minimalAmbientIllumination";
+
     const std::string kRayShader = "RenderPasses/RTAO/Ray.rt.slang";
     const uint32_t kMaxPayloadSize = 4;
 }
@@ -48,17 +52,29 @@ extern "C" FALCOR_API_EXPORT void registerPlugin(Falcor::PluginRegistry& registr
     registry.registerClass<RenderPass, RTAO>();
 }
 
-RTAO::RTAO(ref<Device> pDevice, const Properties& dict)
+RTAO::RTAO(ref<Device> pDevice, const Properties& props)
     : RenderPass(pDevice)
 {
     mpSamplesTex = genSamplesTexture(5312);
     mpSampleGenerator = SampleGenerator::create(mpDevice, SAMPLE_GENERATOR_UNIFORM);
     FALCOR_ASSERT(mpSampleGenerator);
+
+    for (const auto& [key, value] : props)
+    {
+        if (key == kExponent) mData.exponent = value;
+        else if (key == kSpp) mData.spp = value;
+        else if (key == kMinimalAmbientIllumination) mData.minimumAmbientIllumination = value;
+    }
 }
 
 Properties RTAO::getProperties() const
 {
-    return Properties();
+    Properties props = RenderPass::getProperties();
+    props[kExponent] = mData.exponent;
+    props[kSpp] = mData.spp;
+    props[kMinimalAmbientIllumination] = mData.minimumAmbientIllumination;
+
+    return props;
 }
 
 RenderPassReflection RTAO::reflect(const CompileData& compileData)

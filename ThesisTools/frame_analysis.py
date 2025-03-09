@@ -2,8 +2,8 @@
 import skimage as ski
 import math
 
-BASELINE_FILE='Data/RTAO_Statue.png'
-RESULT_FILE='Data/SVAO_PP_Statue.png'
+BASELINE_FILE='Data/RTAO_Tweaked.png'
+RESULT_FILE='Data/HBAO.png'
 
 def analyse_frame(baseline_path, result_path):
     print(f'Analysing baseline: {baseline_path} vs {result_path}')
@@ -16,16 +16,28 @@ def analyse_frame(baseline_path, result_path):
     rmse = math.sqrt(ski.metrics.mean_squared_error(baseline_image, result_image))
     psnr = ski.metrics.peak_signal_noise_ratio(baseline_image, result_image)
 
-    print(f"SIMM:\t{simm}")
-    print(f"MSE:\t{mse}")
-    print(f"RMSE:\t{rmse}")
-    print(f"PSNR:\t{psnr}dB")
+    print(f"SIMM:\t{simm} (Higher is better")
+    print(f"MSE:\t{mse} (Lower is better)")
+    print(f"RMSE:\t{rmse} (Lower is better)")
+    print(f"PSNR:\t{psnr}dB (Higher is better)")
+
+def analyse_all():
+    print("====== AO  ======")
+    analyse_frame('Data/AO/RTAO.png', 'Data/AO/HBAO.png')
+    analyse_frame('Data/AO/RTAO.png', 'Data/AO/VAO.png')
+    analyse_frame('Data/AO/RTAO.png', 'Data/AO/SVAO_PP.png')
+
+    print("====== TAA ======")
+    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/HBAO.png')
+    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/VAO.png')
+    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/SVAO_PP.png')
+    pass
 
 def main():
     if len(sys.argv) == 3:
         analyse_frame(sys.argv[1], sys.argv[2])
     elif len(sys.argv) == 1:
-        analyse_frame(BASELINE_FILE, RESULT_FILE)
+        analyse_all()
     else:
         print("Error: wrong number of arguments")
 

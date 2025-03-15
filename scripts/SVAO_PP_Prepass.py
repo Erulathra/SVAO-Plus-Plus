@@ -23,7 +23,7 @@ def render_graph_DefaultRenderGraph():
     g.add_edge('VAO', 'RTStochasticDepth')
     g.add_edge('RTStochasticDepth', 'SVAO')
     g.add_edge('BilateralBlur.colorOut', 'DeferredLighting.ambientOcclusion')
-    g.add_edge('GBufferLite.normW', 'NormalsToViewSpace.normalsWorldIn')
+    g.add_edge('GBufferLite.faceNormW', 'NormalsToViewSpace.normalsWorldIn')
     g.add_edge('GBufferLite.posW', 'DeferredLighting.posW')
     g.add_edge('GBufferLite.normW', 'DeferredLighting.normW')
     g.add_edge('GBufferLite.diffuseOpacity', 'DeferredLighting.diffuseOpacity')

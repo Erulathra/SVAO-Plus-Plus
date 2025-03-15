@@ -12,7 +12,7 @@ def render_graph_DefaultRenderGraph():
     g.add_edge('DeferredLighting.kColorOut', 'TAA.colorIn')
     g.add_edge('NormalsToViewSpace.normalsViewOut', 'VAO.normalViewIn')
     g.add_edge('VAO.aoOut', 'BilateralBlur.colorIn')
-    g.add_edge('GBufferLite.normW', 'NormalsToViewSpace.normalsWorldIn')
+    g.add_edge('GBufferLite.faceNormW', 'NormalsToViewSpace.normalsWorldIn')
     g.add_edge('GBufferLite.linearDepth', 'VAO.linearDepthIn')
     g.add_edge('BilateralBlur.colorOut', 'DeferredLighting.ambientOcclusion')
     g.add_edge('GBufferLite.specRough', 'DeferredLighting.specRough')

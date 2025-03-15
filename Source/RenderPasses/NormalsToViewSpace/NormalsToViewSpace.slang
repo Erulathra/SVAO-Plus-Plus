@@ -11,6 +11,7 @@ uint main(float2 uv : TEXCOORD, float4 svPos : SV_POSITION) : SV_TARGET
 {
     float3 normal = gNormalsWorldIn[uint2(svPos.xy)].xyz;
     normal = mul(float3x3(gViewMat), normal);
+    uint compressed = encodeNormal2x8(normal);
 
-    return encodeNormal2x8(normal);
+    return compressed;
 }

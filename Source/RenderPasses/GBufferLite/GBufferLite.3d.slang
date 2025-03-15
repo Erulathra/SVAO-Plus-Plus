@@ -37,10 +37,11 @@ struct GBufferPSOut
 {
     float4 posW : SV_TARGET0;
     float4 normW : SV_TARGET1;
-    float4 diffuseOpacity : SV_TARGET2;
-    float4 specRough : SV_TARGET3;
-    float linearDepth : SV_TARGET4;
-    float2 motionVector : SV_TARGET5;
+    float4 faceNormW : SV_TARGET2;
+    float4 diffuseOpacity : SV_TARGET3;
+    float4 specRough : SV_TARGET4;
+    float linearDepth : SV_TARGET5;
+    float2 motionVector : SV_TARGET6;
 };
 
 cbuffer PerFrameCB
@@ -85,6 +86,7 @@ GBufferPSOut psMain(VSOut vsOut, uint triangleIndex: SV_PrimitiveID, float3 bary
 
     psOut.posW = gbuf.posW;
     psOut.normW = gbuf.normW;
+    psOut.faceNormW = gbuf.faceNormalW;
     psOut.diffuseOpacity = gbuf.diffuseOpacity;
     psOut.specRough = gbuf.specRough;
     psOut.linearDepth = -mul(gScene.camera.data.viewMat, gbuf.posW).z;

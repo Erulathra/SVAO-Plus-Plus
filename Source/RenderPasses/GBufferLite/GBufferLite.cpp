@@ -47,6 +47,7 @@ namespace
 const ChannelList GBufferLite::kGBufferChannels = {
     {"posW", "gPosW", "Position in world space", true, ResourceFormat::RGBA32Float},
     {"normW", "gNormW", "Shading normal in world space", true, ResourceFormat::RGBA32Float},
+    {"faceNormW", "gFaceNormW", "Face normal in world space", true, ResourceFormat::RGBA32Float},
     {"diffuseOpacity", "gDiffOpacity", "Diffuse reflection albedo and opacity", true, ResourceFormat::RGBA32Float},
     {"specRough", "gSpecRough", "Specular reflectance and roughness", true, ResourceFormat::RGBA32Float},
     {"linearDepth", "gLinearDepth", "LinearDepth", true, ResourceFormat::R16Float},

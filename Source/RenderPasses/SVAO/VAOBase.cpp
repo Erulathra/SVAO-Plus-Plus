@@ -16,6 +16,8 @@ namespace
         const std::string kResolutionDivisor = "resolutionDivisor";
         const std::string kEnableSDGuardBand = "enableGuardBand";
         const std::string kUseDitherTexture = "useDitherTexture";
+        const std::string kUseAdaptiveSampling = "useAdaptiveSampling";
+        const std::string kAdaptiveSamplingDistances = "adaptiveSamplingDistances";
     }
 }
 
@@ -48,6 +50,8 @@ VAOBase::VAOBase(ref<Device> pDevice, const Properties& props) : RenderPass(pDev
         else if (key == VAOArgs::kResolutionDivisor) mSDMapResolutionDivisor = value;
         else if (key == VAOArgs::kEnableSDGuardBand) mEnableGuardBand = value;
         else if (key == VAOArgs::kUseDitherTexture) mUseDitherTexture = value;
+        else if (key == VAOArgs::kUseAdaptiveSampling) mEnableAdaptiveSampling = value;
+        else if (key == VAOArgs::kAdaptiveSamplingDistances) mVaoData.adaptiveSamplingDistances = value;
     }
 }
 

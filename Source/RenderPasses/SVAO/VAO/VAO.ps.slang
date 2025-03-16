@@ -96,6 +96,7 @@ void main(uint3 id : SV_DispatchThreadID, uint3 group : SV_GroupID, uint3 localI
         return;
     }
 #endif // DEBUG_PREPASS
+    [branch]
     if (samplePrepass(texC) >= 0.98f)
     {
         gAOOut[svPos] = 1.f;

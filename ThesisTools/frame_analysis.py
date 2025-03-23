@@ -22,15 +22,11 @@ def analyse_frame(baseline_path, result_path):
     print(f"PSNR:\t{psnr}dB (Higher is better)")
 
 def analyse_all():
-    print("====== AO  ======")
-    analyse_frame('Data/AO/RTAO.png', 'Data/AO/HBAO.png')
-    analyse_frame('Data/AO/RTAO.png', 'Data/AO/VAO.png')
-    analyse_frame('Data/AO/RTAO.png', 'Data/AO/SVAO_PP.png')
+    print("Baseline vs Adaptive sampling (DeltaMin)")
+    analyse_frame('Data/AdaptiveSampling/baseline_min_delta.png', 'Data/AdaptiveSampling/adaptive_sampling_min_delta.png')
+    print("Baseline vs Adaptive sampling (DeltaMax)")
+    analyse_frame('Data/AdaptiveSampling/baseline_Max_delta.png', 'Data/AdaptiveSampling/adaptive_sampling_Max_delta.png')
 
-    print("====== TAA ======")
-    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/HBAO.png')
-    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/VAO.png')
-    analyse_frame('Data/Colored/RTAO_Tweaked.png', 'Data/Colored/SVAO_PP.png')
     pass
 
 def main():

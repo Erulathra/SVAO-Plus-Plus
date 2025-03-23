@@ -1,19 +1,26 @@
 ﻿import json
+import os
+
+import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 import math
 
+BASELINE_TRACE_FILE = 'Data/SVAO_Baseline.json'
+OPTIMIZED_TRACE_FILE = './Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling.json'
+
 # OPTIMIZED_TRACE_FILE = './Data/SVAO_PP_Sponza_Tweaked.json'
 # BASELINE_TRACE_FILE = './Data/Baseline_Sponza.json'
 
-OPTIMIZED_TRACE_FILE = './Data/SVAO_PP_Sponza_NoCurtains.json'
-BASELINE_TRACE_FILE = './Data/Baseline_Sponza_NoCurtains.json'
+# OPTIMIZED_TRACE_FILE = './Data/SVAO_PP_Sponza_NoCurtains.json'
+# BASELINE_TRACE_FILE = './Data/Baseline_Sponza_NoCurtains.json'
 
 # OPTIMIZED_TRACE_FILE = './Data/SampleTrace.json'
 # BASELINE_TRACE_FILE = './Data/BaselineTrace.json'
 
 VAO_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/VAO/gpu_time'
 VAO_PREPASS_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/VAOPrepass/gpu_time'
+RT_STOCHASTIC_DEPTH_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/RTStochasticDepth/gpu_time'
 SVAO_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/SVAO/gpu_time'
 FRAME_TIME_GPU_NAME = '/onFrameRender/gpu_time'
 
@@ -21,7 +28,9 @@ FRAME_COUNT_NAME = 'frame_count'
 EVENTS_NAME = 'events'
 RECORDS_NAME = 'records'
 
-SMOOTH_WEIGHT = 0.9
+SMOOTH_WEIGHT = 0.98
+
+FONT = {'size'   : 13}
 
 def smooth(scalars: list[float], weight: float) -> list[float]:
     """
@@ -82,10 +91,10 @@ def draw_frame_chart(trace_data):
     plt.plot(frame_time, vao_records, 'b', label='VAO')
     plt.plot(frame_time, svao_records, 'g', label='SVAO')
     plt.plot(frame_time, frame_time_records, 'r', label='Frame Time')
-    plt.legend()
+    # plt.legend()
 
-    plt.ylabel('duration [ms]')
-    plt.xlabel('time [s]')
+    plt.ylabel('czas przetwarzania [ms]')
+    plt.xlabel('czas [s]')
 
     plt.show()
 
@@ -100,7 +109,7 @@ def get_channels_sum(trace_data, channels):
     return result
 
 
-def draw_compare_chart(first_trace_data, first_channels, first_name, second_trace_data, second_channels, second_name):
+def draw_compare_chart(first_trace_data, first_channels, second_trace_data, second_channels, save_path = None):
     first_frame_time = calculate_frame_times(first_trace_data)
     first_trace = get_channels_sum(first_trace_data, first_channels)
     first_trace = smooth(first_trace, SMOOTH_WEIGHT)
@@ -109,23 +118,71 @@ def draw_compare_chart(first_trace_data, first_channels, first_name, second_trac
     second_trace = get_channels_sum(second_trace_data, second_channels)
     second_trace = smooth(second_trace, SMOOTH_WEIGHT)
 
-    plt.plot(first_frame_time, first_trace, 'r', label=first_name)
-    plt.plot(second_frame_time, second_trace, 'b', label=second_name)
-    plt.legend()
+    plt.plot(first_frame_time, first_trace, 'r')
+    plt.plot(second_frame_time, second_trace, 'b')
+    # plt.legend()
 
-    plt.ylabel('duration [ms]')
-    plt.xlabel('time [s]')
+    plt.ylabel('czas przetwarzania [ms]')
+    plt.xlabel('czas [s]')
 
-    plt.show()
+    if save_path is None:
+        plt.show()
+    else:
+        plt.savefig(save_path)
+
+    plt.close()
 
 
 def main():
-    draw_frame_chart(load_trace(OPTIMIZED_TRACE_FILE))
-    # draw_frame_chart(load_trace(BASELINE_TRACE_FILE))
+    matplotlib.rc('font', **FONT)
+
+    generate_adaptive_sampling_plots()
+    generate_prepass_plots()
+
+
+def generate_adaptive_sampling_plots():
+    channels = [VAO_GPU_NAME, RT_STOCHASTIC_DEPTH_GPU_NAME, SVAO_GPU_NAME];
+    base_path = "Output/results/adaptive_sampling"
+
+    os.makedirs(base_path, exist_ok=True)
+
     draw_compare_chart(
-        load_trace(BASELINE_TRACE_FILE), [VAO_GPU_NAME, SVAO_GPU_NAME], "SVAO (Baseline)",
-        load_trace(OPTIMIZED_TRACE_FILE), [VAO_PREPASS_GPU_NAME, VAO_GPU_NAME, SVAO_GPU_NAME], "SVAO++"
+        load_trace("Data/SVAO_Baseline.json"), channels,
+        load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling.json"), channels,
+        os.path.join(base_path, "baseline_vs_adaptive_curtains.png")
     )
+    draw_compare_chart(
+        load_trace("Data/SVAO_Baseline_NoCurtains.json"), channels,
+        load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling_NoCurtains.json"), channels,
+        os.path.join(base_path, "baseline_vs_adaptive_nocurtains.png")
+    )
+    draw_compare_chart(
+        load_trace("Data/SVAO_Baseline.json"), channels,
+        load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling_SecondPass.json"), channels,
+        os.path.join(base_path, "baseline_vs_adaptive_svao.png")
+    )
+
+def generate_prepass_plots():
+    baseline_channels = [VAO_GPU_NAME, RT_STOCHASTIC_DEPTH_GPU_NAME, SVAO_GPU_NAME];
+    prepass_channels = baseline_channels;
+    prepass_channels.append(VAO_PREPASS_GPU_NAME)
+    base_path = "Output/results/prepass"
+
+    os.makedirs(base_path, exist_ok=True)
+
+    draw_compare_chart(
+        load_trace("Data/Prepass/baseline.json"), baseline_channels,
+        load_trace("Data/Prepass/VAO_Prepass.json"), prepass_channels,
+        os.path.join(base_path, "baseline_vs_prepass_curtains.png")
+    )
+
+    draw_compare_chart(
+        load_trace("Data/SVAO_Baseline_NoCurtains.json"), baseline_channels,
+        load_trace("Data/Prepass/VAO_Prepass_NoCurtains.json"), prepass_channels,
+        os.path.join(base_path, "baseline_vs_prepass_nocurtains.png")
+    )
+
+
 
 if __name__ == '__main__':
     main()

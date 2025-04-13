@@ -23,6 +23,7 @@ VAO_PREPASS_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/VAOPrepass/gpu_
 RT_STOCHASTIC_DEPTH_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/RTStochasticDepth/gpu_time'
 SVAO_GPU_NAME = '/onFrameRender/RenderGraphExe::execute()/SVAO/gpu_time'
 FRAME_TIME_GPU_NAME = '/onFrameRender/gpu_time'
+DEFERRED_LIGHTING_NAME = '/onFrameRender/RenderGraphExe::execute()/DeferredLighting/gpu_time'
 
 FRAME_COUNT_NAME = 'frame_count'
 EVENTS_NAME = 'events'
@@ -109,18 +110,24 @@ def get_channels_sum(trace_data, channels):
     return result
 
 
-def draw_compare_chart(first_trace_data, first_channels, second_trace_data, second_channels, save_path = None):
+def draw_compare_chart(first_trace_data, first_channels, second_trace_data, second_channels, third_trace_data = None, third_channels = None, save_path = None):
     first_frame_time = calculate_frame_times(first_trace_data)
     first_trace = get_channels_sum(first_trace_data, first_channels)
     first_trace = smooth(first_trace, SMOOTH_WEIGHT)
-
-    second_frame_time = calculate_frame_times(second_trace_data)
-    second_trace = get_channels_sum(second_trace_data, second_channels)
-    second_trace = smooth(second_trace, SMOOTH_WEIGHT)
-
     plt.plot(first_frame_time, first_trace, 'r')
-    plt.plot(second_frame_time, second_trace, 'b')
-    # plt.legend()
+
+    if second_trace_data is not None and second_channels is not None:
+        second_frame_time = calculate_frame_times(second_trace_data)
+        second_trace = get_channels_sum(second_trace_data, second_channels)
+        second_trace = smooth(second_trace, SMOOTH_WEIGHT)
+        plt.plot(second_frame_time, second_trace, 'b')
+
+    if third_trace_data is not None and third_channels is not None:
+        third_frame_time = calculate_frame_times(third_trace_data)
+        third_trace = get_channels_sum(third_trace_data, third_channels)
+        third_trace = smooth(third_trace, SMOOTH_WEIGHT)
+
+        plt.plot(third_frame_time, third_trace, 'g')
 
     plt.ylabel('czas przetwarzania [ms]')
     plt.xlabel('czas [s]')
@@ -138,6 +145,8 @@ def main():
 
     generate_adaptive_sampling_plots()
     generate_prepass_plots()
+    generate_blending_plots()
+    generate_finals_plots()
 
 
 def generate_adaptive_sampling_plots():
@@ -149,17 +158,17 @@ def generate_adaptive_sampling_plots():
     draw_compare_chart(
         load_trace("Data/SVAO_Baseline.json"), channels,
         load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling.json"), channels,
-        os.path.join(base_path, "baseline_vs_adaptive_curtains.png")
+        save_path = os.path.join(base_path, "baseline_vs_adaptive_curtains.png")
     )
     draw_compare_chart(
         load_trace("Data/SVAO_Baseline_NoCurtains.json"), channels,
         load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling_NoCurtains.json"), channels,
-        os.path.join(base_path, "baseline_vs_adaptive_nocurtains.png")
+        save_path = os.path.join(base_path, "baseline_vs_adaptive_nocurtains.png")
     )
     draw_compare_chart(
         load_trace("Data/SVAO_Baseline.json"), channels,
         load_trace("Data/AdaptiveSampling/SVAO_PP_AdatpiveSampling_SecondPass.json"), channels,
-        os.path.join(base_path, "baseline_vs_adaptive_svao.png")
+        save_path = os.path.join(base_path, "baseline_vs_adaptive_svao.png")
     )
 
 def generate_prepass_plots():
@@ -173,13 +182,51 @@ def generate_prepass_plots():
     draw_compare_chart(
         load_trace("Data/Prepass/baseline.json"), baseline_channels,
         load_trace("Data/Prepass/VAO_Prepass.json"), prepass_channels,
-        os.path.join(base_path, "baseline_vs_prepass_curtains.png")
+        save_path = os.path.join(base_path, "baseline_vs_prepass_curtains.png")
     )
 
     draw_compare_chart(
         load_trace("Data/SVAO_Baseline_NoCurtains.json"), baseline_channels,
         load_trace("Data/Prepass/VAO_Prepass_NoCurtains.json"), prepass_channels,
-        os.path.join(base_path, "baseline_vs_prepass_nocurtains.png")
+        save_path = os.path.join(base_path, "baseline_vs_prepass_nocurtains.png")
+    )
+
+    draw_compare_chart(
+        load_trace("Data/Prepass/carefull_heuristic.json"), [VAO_GPU_NAME],
+        load_trace("Data/Prepass/greedy_heuristic.json"), [VAO_GPU_NAME],
+        save_path = os.path.join(base_path, "greedy_vs_carefull.png")
+    )
+
+def generate_blending_plots():
+    channels = [DEFERRED_LIGHTING_NAME];
+    base_path = "Output/results/blending"
+
+    os.makedirs(base_path, exist_ok=True)
+
+    draw_compare_chart(
+        load_trace("Data/AOBlending/blending_naive.json"), channels,
+        load_trace("Data/AOBlending/blending_ambient.json"), channels,
+        load_trace("Data/AOBlending/blending_luminance.json"), channels,
+        save_path = os.path.join(base_path, "blending.png")
+    )
+
+def generate_finals_plots():
+    baseline_channels = [DEFERRED_LIGHTING_NAME, VAO_GPU_NAME, SVAO_GPU_NAME, RT_STOCHASTIC_DEPTH_GPU_NAME];
+    channels = [DEFERRED_LIGHTING_NAME, VAO_GPU_NAME, SVAO_GPU_NAME, RT_STOCHASTIC_DEPTH_GPU_NAME, VAO_PREPASS_GPU_NAME];
+    base_path = "Output/results/final"
+
+    os.makedirs(base_path, exist_ok=True)
+
+    draw_compare_chart(
+        load_trace("Data/Final/SVAO_Baseline_NoCurtains.json"), baseline_channels,
+        load_trace("Data/Final/SVAO_PP_NoCurtains.json"), channels,
+        save_path = os.path.join(base_path, "no_curtains.png")
+    )
+
+    draw_compare_chart(
+        load_trace("Data/Final/SVAO_Baseline_Curtains.json"), baseline_channels,
+        load_trace("Data/Final/SVAO_PP_Curtains.json"), channels,
+        save_path = os.path.join(base_path, "curtains.png")
     )
 
 

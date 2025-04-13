@@ -21,21 +21,18 @@ def analyse_frame(baseline_path, result_path):
     print(f"RMSE:\t{rmse} (Lower is better)")
     print(f"PSNR:\t{psnr}dB (Higher is better)")
 
-def analyse_all():
+def main():
     print("Baseline vs Adaptive sampling (DeltaMin)")
     analyse_frame('Data/AdaptiveSampling/baseline_min_delta.png', 'Data/AdaptiveSampling/adaptive_sampling_min_delta.png')
     print("Baseline vs Adaptive sampling (DeltaMax)")
     analyse_frame('Data/AdaptiveSampling/baseline_Max_delta.png', 'Data/AdaptiveSampling/adaptive_sampling_Max_delta.png')
 
-    pass
-
-def main():
-    if len(sys.argv) == 3:
-        analyse_frame(sys.argv[1], sys.argv[2])
-    elif len(sys.argv) == 1:
-        analyse_all()
-    else:
-        print("Error: wrong number of arguments")
+    print("RTAO vs HBAO")
+    analyse_frame('Data/Final/RTAO.png', 'Data/Final/HBAO.png')
+    print("RTAO vs SVAO")
+    analyse_frame('Data/Final/RTAO.png', 'Data/Final/SVAO_Baseline.png')
+    print("RTAO vs SVAO++")
+    analyse_frame('Data/Final/RTAO.png', 'Data/Final/SVAO_PlusPlus.png')
 
 if __name__ == '__main__':
     main()

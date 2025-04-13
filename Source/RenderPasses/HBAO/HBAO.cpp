@@ -168,7 +168,7 @@ void HBAO::renderUI(Gui::Widgets& widget)
     }
 
     if (widget.slider("Depth Bias", mData.NdotVBias, 0.0f, 0.5f)) mDirty = true;
-    if (widget.slider("Power Exponent", mData.powerExponent, 1.0f, 4.0f)) mDirty = true;
+    if (widget.slider("Power Exponent", mData.powerExponent, 1.0f, 20.0f)) mDirty = true;
 }
 
 void HBAO::setRadius(float r)

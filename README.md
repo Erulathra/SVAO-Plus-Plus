@@ -1,3 +1,13 @@
+# SVAO++
+
+## Scritps:
+* `HBAO.py` - Simple HBAO implementation
+* `VAO.py` - Simplest VAO implementation
+* `RTAO,py` - Raytraced AO implementation (ground truth)
+* `SVAO_baseline.py` - Baseline SVAO without modifications
+* `SVAO_PP_Prepas.py` - Final SVAO++ algorithm
+
+
 ![](docs/images/teaser.png)
 
 # Falcor
